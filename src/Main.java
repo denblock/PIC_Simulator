@@ -11,7 +11,7 @@ import java.util.List;
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-		List<String> data = Files.readAllLines(Paths.get("TPicSim1.LST"), StandardCharsets.UTF_8);
+		List<String> data = Files.readAllLines(Paths.get("LST/TPicSim1.LST"), StandardCharsets.UTF_8);
 
 		int acc = 0xff;
 		Boolean zero = false;
