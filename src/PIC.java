@@ -8,9 +8,9 @@ import java.util.Stack;;
 
 public class PIC {
 	int W;
-	Boolean Z;
-	Boolean C;
-	Boolean DC;
+	boolean Z;
+	boolean C;
+	boolean DC;
 	int[] Memory;
 	int[] Reg;
 	Stack<Integer> Stack;
@@ -48,145 +48,31 @@ public class PIC {
 			Instruction instruction = new Instruction(Memory[i]);
 			String instName = instruction.GetName();
 			int[] instArgs = instruction.GetArgs();
-			int result;
 
 			switch (instName) {
-			case "movlw":
-				W = instArgs[0];
-				break;
 			case "addlw":
-				W = ALU(CALC_TYPE.ADD, instArgs[0], W);
-				break;
-			case "sublw":
-				W = ALU(CALC_TYPE.SUBSTRACT, instArgs[0], W);
-				break;
 			case "andlw":
-				W = ALU(CALC_TYPE.AND, instArgs[0], W);
-				break;
 			case "iorlw":
-				W = ALU(CALC_TYPE.IOR, instArgs[0], W);
-				break;
+			case "movlw":
+			case "sublw":
 			case "xorlw":
-				W = ALU(CALC_TYPE.XOR, instArgs[0], W);
-				break;
-			case "movwf":
-				Reg[instArgs[0]] = W;
+				W = Calculate(instName, instArgs[0]);
 				break;
 			case "addwf":
-				result = ALU(CALC_TYPE.ADD, Reg[instArgs[0]], W);
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
 			case "andwf":
-				result = ALU(CALC_TYPE.AND, Reg[instArgs[0]], W);
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "clrf":
-				Reg[instArgs[0]] = 0;
-				Z = true;
-				break;
 			case "comf":
-				result = ALU(CALC_TYPE.COMPLEMENT, Reg[instArgs[0]]);
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
 			case "decf":
-				result = ALU(CALC_TYPE.DECREMENT, Reg[instArgs[0]]);
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "incf":
-				result = ALU(CALC_TYPE.INCREMENT, Reg[instArgs[0]]);
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "movf":
-				result = Reg[instArgs[0]];
-				Z = result == 0;
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "iorwf":
-				result = ALU(CALC_TYPE.IOR, Reg[instArgs[0]], W);
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "subwf":
-				result = ALU(CALC_TYPE.SUBSTRACT, Reg[instArgs[0]], W);
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "swapf":
-				result = (Reg[instArgs[0]] & 0x0F) << 4 | (Reg[instArgs[0]] & 0xF0) >> 4;
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "xorwf":
-				result = Reg[instArgs[0]] ^ W;
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "rlf":
-				result = (Reg[instArgs[0]] << 1) & 0xFF;
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
-			case "rrf":
-				result = Reg[instArgs[0]] >> 1;
-
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-				break;
 			case "decfsz":
-				result = (Reg[instArgs[0]] - 1) & 0xFF;
+			case "incf":
+			case "incfsz":
+			case "iorwf":
+			case "movf":
+			case "rlf":
+			case "rrf":
+			case "subwf":
+			case "swapf":
+			case "xorwf":
+				int result = Calculate(instName, Reg[instArgs[0]]);
 
 				if (instArgs[1] == 1) {
 					Reg[instArgs[0]] = result;
@@ -194,28 +80,35 @@ public class PIC {
 					W = result;
 				}
 
-				if (result == 0) {
+				if ((instName == "decfsz" || instName == "incfsz") && result == 0) {
 					i = i + 1;
 				}
 				break;
-			case "incfsz":
-				result = (Reg[instArgs[0]] + 1) & 0xFF;
+			case "bcf":
+			case "bsf":
+				Reg[instArgs[0]] = Calculate(instName, Reg[instArgs[0]], instArgs[1]);
+				break;
+			case "btfsc":
+			case "btfss":
+				int bit = Reg[instArgs[0]] & (1 << instArgs[1]);
 
-				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
-				} else {
-					W = result;
-				}
-
-				if (result == 0) {
+				if ((instName == "btfsc" && bit == 0) || (instName == "btfss" && bit != 0)) {
 					i = i + 1;
 				}
 				break;
 			case "clrw":
 				W = 0;
+				Z = true;
+				break;
+			case "clrf":
+				Reg[instArgs[0]] = 0;
+				Z = true;
+				break;
+			case "movwf":
+				Reg[instArgs[0]] = W;
 				break;
 			case "goto":
-				// i = instArgs[0] - 1;
+				i = instArgs[0] - 1;
 				break;
 			case "call":
 				Stack.push(i + 1);
@@ -227,22 +120,6 @@ public class PIC {
 			case "retlw":
 				W = instArgs[0];
 				i = Stack.pop() - 1;
-				break;
-			case "bsf":
-				Reg[instArgs[0]] = Reg[instArgs[0]] | (1 << instArgs[1]);
-				break;
-			case "bcf":
-				Reg[instArgs[0]] = Reg[instArgs[0]] & ~(1 << instArgs[1]);
-				break;
-			case "btfsc":
-				if ((Reg[instArgs[0]] & (1 << instArgs[1])) == 0) {
-					i = i + 1;
-				}
-				break;
-			case "btfss":
-				if ((Reg[instArgs[0]] & (1 << instArgs[1])) != 0) {
-					i = i + 1;
-				}
 				break;
 			default:
 				break;
@@ -256,46 +133,62 @@ public class PIC {
 		}
 	}
 
-	public int ALU(String instructionName, int a, int b) {
+	public int Calculate(String instructionName, int a, int b) {
 		int result;
-		
+		int[] statusAffected = new int[] { 0, 0, 0 };	// { C, DC, Z }
+
 		switch (instructionName) {
+		case "movlw":
+		case "movf":
+			result = a;
+			statusAffected = new int[] { 0, 0, 1 };
+			break;
 		case "addwf":
 		case "addlw":
 			result = a + b;
+			statusAffected = new int[] { 1, 1, 1 };
 			break;
 		case "subwf":
 		case "sublw":
 			result = a - b;
+			statusAffected = new int[] { 1, 1, 1 };
 			break;
 		case "andwf":
 		case "andlw":
 			result = a & b;
+			statusAffected = new int[] { 0, 0, 1 };
 			break;
 		case "iorwf":
 		case "iorlw":
 			result = a | b;
+			statusAffected = new int[] { 0, 0, 1 };
 			break;
 		case "xorwf":
 		case "xorlw":
 			result = a ^ b;
+			statusAffected = new int[] { 0, 0, 1 };
 			break;
 		case "comf":
 			result = ~a;
+			statusAffected = new int[] { 0, 0, 1 };
 			break;
 		case "decf":
 		case "decfsz":
 			result = a - 1;
+			statusAffected = new int[] { 0, 0, 1 };
 			break;
 		case "incf":
 		case "incfsz":
 			result = a + 1;
+			statusAffected = new int[] { 0, 0, 1 };
 			break;
 		case "rlf":
-			result = a << 1;
+			result = (a << 1) | (C ? 1 : 0);
+			C = ((a & 0x80) >> 7) == 1;
 			break;
 		case "rrf":
-			result = a >>> 1;
+			result = (a >> 1) | ((C ? 1 : 0) << 7);
+			C = (a & 0x01) == 1;
 			break;
 		case "bcf":
 			result = a & ~(1 << b);
@@ -312,15 +205,22 @@ public class PIC {
 
 		result = result & 0xFF;
 
-		Z = result == 0;
-		C = result < a;
-		DC = (result & 0x0F) < (a & 0x0F);
+		if (statusAffected[0] == 1) {
+			C = result < a;
+		}
+
+		if (statusAffected[1] == 1) {
+			DC = (result & 0x0F) < (a & 0x0F);
+		}
+
+		if (statusAffected[2] == 1) {
+			Z = result == 0;
+		}
 
 		return result;
 	}
 
-	public int ALU(String instructionName, int a) {
-		return ALU(instructionName, a, 0);
+	public int Calculate(String instructionName, int a) {
+		return Calculate(instructionName, a, W);
 	}
-
 }

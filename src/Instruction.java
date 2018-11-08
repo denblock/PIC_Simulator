@@ -34,10 +34,10 @@ public class Instruction {
 		}
 
 		opCode = (instruction & 0x3FFF) >> 7;
-		int arg1 = instruction & 0x07FF; // 00 0kkk kkkk kkkk
-		int arg2 = instruction & 0x00FF; // 00 0000 kkkk kkkk
+		int arg1 = instruction & 0x07FF; 		// 00 0kkk kkkk kkkk
+		int arg2 = instruction & 0x00FF; 		// 00 0000 kkkk kkkk
 		int arg3 = (instruction & 0x0380) >> 7; // 00 00bb b000 0000
-		int arg4 = instruction & 0x007F; // 00 0000 0fff ffff
+		int arg4 = instruction & 0x007F; 		// 00 0000 0fff ffff
 		int arg5 = (instruction & 0x0080) >> 7; // 00 0000 d000 0000
 
 		switch (opCode) {
