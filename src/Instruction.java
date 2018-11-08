@@ -9,6 +9,7 @@ public class Instruction {
 			return;
 		}
 
+		Args = new int[0];
 		Cycles = 1;
 
 		int opCode = instruction & 0x3FFF;

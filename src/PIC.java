@@ -11,12 +11,16 @@ public class PIC {
 	private int[] Memory;
 	private Register Reg;
 	private Stack<Integer> Stack;
+	private int Prescale;
+	private int CyclesLeft;
 
 	public void Simulate(String fileName) throws IOException {
 		W = 0xFF;
 		Stack = new Stack<Integer>();
 		Memory = new int[1024];
-		Reg = new Register(1024);
+		Reg = new Register(1024, this);
+		Prescale = Reg.GetPrescale();
+		CyclesLeft = Prescale;
 		Arrays.fill(Memory, 0xFFFF);
 
 		List<String> data = Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
@@ -121,22 +125,45 @@ public class PIC {
 			default:
 				break;
 			}
-			
-			cyclesLeft -= instCycles;
-			
-			if(cyclesLeft == 0) {
+
+			if (Reg.GetClockSource() == false) {
+				int prescale = Reg.GetPrescale();
+
+				if (Prescale != prescale) {
+					Prescale = prescale;
+					CyclesLeft = Prescale;
+				} else {
+					CyclesLeft -= instCycles;
+
+					if (CyclesLeft <= 0) {
+						Reg.IncrementTMR0();
+
+						CyclesLeft += Prescale;
+					}
+				}
+				
 				
 			}
 
-			System.out.println("[" + i + "] " + instName + ":\tW=" + Integer.toHexString(W) + ", FSR=" + Integer.toHexString(Reg.Read(4))
-					+ ", wert1=" + Integer.toHexString(Reg.Read(0xC)) + ", wert2=" + Integer.toHexString(Reg.Read(0xD))
-					+ ", ergeb=" + Integer.toHexString(Reg.Read(0xE)) + ", DC=" + (Reg.GetDC() ? 1 : 0) + ", C=" + (Reg.GetC() ? 1 : 0)
-					+ ", Z=" + (Reg.GetZ() ? 1 : 0));
+			String output = "[" + i + "] " + instName + "(";
+
+			for (int j = 0; j < instArgs.length; j++) {
+				output += Integer.toHexString(instArgs[j]) + ", ";
+			}
+
+			output = output.substring(0, output.length() - (instArgs.length > 0 ? 2 : 0));
+			output += "):\tW=" + Integer.toHexString(W) + ", FSR=" + Integer.toHexString(Reg.Read(4)) + ", wert1="
+					+ Integer.toHexString(Reg.Read(0xC)) + ", wert2=" + Integer.toHexString(Reg.Read(0xD)) + ", ergeb="
+					+ Integer.toHexString(Reg.Read(0xE)) + ", DC=" + (Reg.GetDC() ? 1 : 0) + ", C="
+					+ (Reg.GetC() ? 1 : 0) + ", Z=" + (Reg.GetZ() ? 1 : 0) + ", CyclesLeft=" + CyclesLeft + ", TMR0="
+					+ Reg.GetTMR0();
+
+			System.out.println(output);
 
 		}
 	}
 
-	private int Calculate(String instructionName, int a, int b) {
+	public int Calculate(String instructionName, int a, int b) {
 		int result;
 		int[] statusAffected = new int[] { 0, 0, 0 }; // { C, DC, Z }
 
@@ -227,7 +254,11 @@ public class PIC {
 		return result;
 	}
 
-	private int Calculate(String instructionName, int a) {
+	public int Calculate(String instructionName, int a) {
 		return Calculate(instructionName, a, W);
+	}
+	
+	public void ResetCyclesLeft() {
+		CyclesLeft = Prescale;
 	}
 }
