@@ -7,22 +7,16 @@ import java.util.List;
 import java.util.Stack;;
 
 public class PIC {
-	int W;
-	boolean Z;
-	boolean C;
-	boolean DC;
-	int[] Memory;
-	int[] Reg;
-	Stack<Integer> Stack;
+	private int W;
+	private int[] Memory;
+	private Register Reg;
+	private Stack<Integer> Stack;
 
 	public void Simulate(String fileName) throws IOException {
 		W = 0xFF;
-		Z = false;
-		C = false;
-		DC = false;
 		Stack = new Stack<Integer>();
 		Memory = new int[1024];
-		Reg = new int[1024];
+		Reg = new Register(1024);
 		Arrays.fill(Memory, 0xFFFF);
 
 		List<String> data = Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
@@ -48,6 +42,7 @@ public class PIC {
 			Instruction instruction = new Instruction(Memory[i]);
 			String instName = instruction.GetName();
 			int[] instArgs = instruction.GetArgs();
+			int instCycles = instruction.GetCycles();
 
 			switch (instName) {
 			case "addlw":
@@ -72,40 +67,42 @@ public class PIC {
 			case "subwf":
 			case "swapf":
 			case "xorwf":
-				int result = Calculate(instName, Reg[instArgs[0]]);
+				int result = Calculate(instName, Reg.Read(instArgs[0]));
 
 				if (instArgs[1] == 1) {
-					Reg[instArgs[0]] = result;
+					Reg.Write(instArgs[0], result);
 				} else {
 					W = result;
 				}
 
 				if ((instName == "decfsz" || instName == "incfsz") && result == 0) {
-					i = i + 1;
+					i += 1;
+					instCycles += 1;
 				}
 				break;
 			case "bcf":
 			case "bsf":
-				Reg[instArgs[0]] = Calculate(instName, Reg[instArgs[0]], instArgs[1]);
+				Reg.Write(instArgs[0], Calculate(instName, Reg.Read(instArgs[0]), instArgs[1]));
 				break;
 			case "btfsc":
 			case "btfss":
-				int bit = Reg[instArgs[0]] & (1 << instArgs[1]);
+				int bit = Reg.Read(instArgs[0]) & (1 << instArgs[1]);
 
 				if ((instName == "btfsc" && bit == 0) || (instName == "btfss" && bit != 0)) {
-					i = i + 1;
+					i += 1;
+					instCycles += 1;
 				}
 				break;
 			case "clrw":
 				W = 0;
-				Z = true;
+				Reg.SetZ(true);
 				break;
 			case "clrf":
-				Reg[instArgs[0]] = 0;
-				Z = true;
+				Reg.Write(instArgs[0], 0);
+				Reg.SetZ(true);
 				break;
 			case "movwf":
-				Reg[instArgs[0]] = W;
+				Reg.Write(instArgs[0], W);
 				break;
 			case "goto":
 				i = instArgs[0] - 1;
@@ -124,18 +121,24 @@ public class PIC {
 			default:
 				break;
 			}
+			
+			cyclesLeft -= instCycles;
+			
+			if(cyclesLeft == 0) {
+				
+			}
 
-			System.out.println(instName + ":\tW=" + Integer.toHexString(W) + ", FSR=" + Integer.toHexString(Reg[4])
-					+ ", wert1=" + Integer.toHexString(Reg[0xC]) + ", wert2=" + Integer.toHexString(Reg[0xD])
-					+ ", ergeb=" + Integer.toHexString(Reg[0xE]) + ", DC=" + (DC ? 1 : 0) + ", C=" + (C ? 1 : 0)
-					+ ", Z=" + (Z ? 1 : 0));
+			System.out.println("[" + i + "] " + instName + ":\tW=" + Integer.toHexString(W) + ", FSR=" + Integer.toHexString(Reg.Read(4))
+					+ ", wert1=" + Integer.toHexString(Reg.Read(0xC)) + ", wert2=" + Integer.toHexString(Reg.Read(0xD))
+					+ ", ergeb=" + Integer.toHexString(Reg.Read(0xE)) + ", DC=" + (Reg.GetDC() ? 1 : 0) + ", C=" + (Reg.GetC() ? 1 : 0)
+					+ ", Z=" + (Reg.GetZ() ? 1 : 0));
 
 		}
 	}
 
-	public int Calculate(String instructionName, int a, int b) {
+	private int Calculate(String instructionName, int a, int b) {
 		int result;
-		int[] statusAffected = new int[] { 0, 0, 0 };	// { C, DC, Z }
+		int[] statusAffected = new int[] { 0, 0, 0 }; // { C, DC, Z }
 
 		switch (instructionName) {
 		case "movlw":
@@ -173,22 +176,26 @@ public class PIC {
 			statusAffected = new int[] { 0, 0, 1 };
 			break;
 		case "decf":
-		case "decfsz":
 			result = a - 1;
 			statusAffected = new int[] { 0, 0, 1 };
 			break;
+		case "decfsz":
+			result = a - 1;
+			break;
 		case "incf":
-		case "incfsz":
 			result = a + 1;
 			statusAffected = new int[] { 0, 0, 1 };
 			break;
+		case "incfsz":
+			result = a + 1;
+			break;
 		case "rlf":
-			result = (a << 1) | (C ? 1 : 0);
-			C = ((a & 0x80) >> 7) == 1;
+			result = (a << 1) | (Reg.GetC() ? 1 : 0);
+			Reg.SetC(((a & 0x80) >> 7) == 1);
 			break;
 		case "rrf":
-			result = (a >> 1) | ((C ? 1 : 0) << 7);
-			C = (a & 0x01) == 1;
+			result = (a >> 1) | ((Reg.GetC() ? 1 : 0) << 7);
+			Reg.SetC((a & 0x01) == 1);
 			break;
 		case "bcf":
 			result = a & ~(1 << b);
@@ -206,21 +213,21 @@ public class PIC {
 		result = result & 0xFF;
 
 		if (statusAffected[0] == 1) {
-			C = result < a;
+			Reg.SetC(result < a);
 		}
 
 		if (statusAffected[1] == 1) {
-			DC = (result & 0x0F) < (a & 0x0F);
+			Reg.SetDC((result & 0x0F) < (a & 0x0F));
 		}
 
 		if (statusAffected[2] == 1) {
-			Z = result == 0;
+			Reg.SetZ(result == 0);
 		}
 
 		return result;
 	}
 
-	public int Calculate(String instructionName, int a) {
+	private int Calculate(String instructionName, int a) {
 		return Calculate(instructionName, a, W);
 	}
 }

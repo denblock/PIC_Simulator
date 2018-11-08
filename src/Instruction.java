@@ -2,11 +2,14 @@
 public class Instruction {
 	private String Name;
 	private int[] Args;
+	private int Cycles;
 
 	public Instruction(int instruction) {
 		if (instruction == 0xFFFF) {
 			return;
 		}
+
+		Cycles = 1;
 
 		int opCode = instruction & 0x3FFF;
 
@@ -22,9 +25,11 @@ public class Instruction {
 			return;
 		case 0x0009:
 			Name = "retfie";
+			Cycles = 2;
 			return;
 		case 0x0008:
 			Name = "return";
+			Cycles = 2;
 			return;
 		case 0x0063:
 			Name = "sleep";
@@ -34,10 +39,10 @@ public class Instruction {
 		}
 
 		opCode = (instruction & 0x3FFF) >> 7;
-		int arg1 = instruction & 0x07FF; 		// 00 0kkk kkkk kkkk
-		int arg2 = instruction & 0x00FF; 		// 00 0000 kkkk kkkk
+		int arg1 = instruction & 0x07FF; // 00 0kkk kkkk kkkk
+		int arg2 = instruction & 0x00FF; // 00 0000 kkkk kkkk
 		int arg3 = (instruction & 0x0380) >> 7; // 00 00bb b000 0000
-		int arg4 = instruction & 0x007F; 		// 00 0000 0fff ffff
+		int arg4 = instruction & 0x007F; // 00 0000 0fff ffff
 		int arg5 = (instruction & 0x0080) >> 7; // 00 0000 d000 0000
 
 		switch (opCode) {
@@ -66,27 +71,27 @@ public class Instruction {
 			return;
 		case 0x0900:
 			Name = "comf";
-			Args = new int[] {arg4, arg5};
+			Args = new int[] { arg4, arg5 };
 			return;
 		case 0x0300:
 			Name = "decf";
-			Args = new int[] {arg4, arg5};
+			Args = new int[] { arg4, arg5 };
 			return;
 		case 0x0B00:
-			Name ="decfsz";
-			Args = new int[] {arg4, arg5};
+			Name = "decfsz";
+			Args = new int[] { arg4, arg5 };
 			return;
 		case 0x0A00:
 			Name = "incf";
-			Args = new int[] {arg4, arg5};
+			Args = new int[] { arg4, arg5 };
 			return;
 		case 0x0F00:
-			Name ="incfsz";
-			Args = new int[] {arg4, arg5};
+			Name = "incfsz";
+			Args = new int[] { arg4, arg5 };
 			return;
 		case 0x0400:
 			Name = "iorwf";
-			Args = new int[] {arg4, arg5};
+			Args = new int[] { arg4, arg5 };
 			return;
 		case 0x0800:
 			Name = "movf";
@@ -116,8 +121,7 @@ public class Instruction {
 			Name = "xorwf";
 			Args = new int[] { arg4, arg5 };
 			return;
-			
-			
+
 		// LITERAL AND CONTOL OPERATIONS
 		case 0x3E00:
 		case 0x3F00:
@@ -145,6 +149,7 @@ public class Instruction {
 		case 0x3700:
 			Name = "retlw";
 			Args = new int[] { arg2 };
+			Cycles = 2;
 			return;
 		case 0x3C00:
 		case 0x3D00:
@@ -188,10 +193,12 @@ public class Instruction {
 		case 0x2000:
 			Name = "call";
 			Args = new int[] { arg1 };
+			Cycles = 2;
 			return;
 		case 0x2800:
 			Name = "goto";
 			Args = new int[] { arg1 };
+			Cycles = 2;
 			return;
 		default:
 			break;
@@ -204,5 +211,9 @@ public class Instruction {
 
 	public int[] GetArgs() {
 		return Args;
+	}
+	
+	public int GetCycles() {
+		return Cycles;
 	}
 }
