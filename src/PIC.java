@@ -11,7 +11,6 @@ public class PIC {
 	private int[] Memory;
 	private Register Reg;
 	private Stack<Integer> Stack;
-	private int Prescale;
 	private int CyclesLeft;
 
 	public void Simulate(String fileName) throws IOException {
@@ -19,8 +18,7 @@ public class PIC {
 		Stack = new Stack<Integer>();
 		Memory = new int[1024];
 		Reg = new Register(1024, this);
-		Prescale = Reg.GetPrescale();
-		CyclesLeft = Prescale;
+		CyclesLeft = Reg.GetPrescale();
 		Arrays.fill(Memory, 0xFFFF);
 
 		List<String> data = Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
@@ -127,22 +125,13 @@ public class PIC {
 			}
 
 			if (Reg.GetClockSource() == false) {
-				int prescale = Reg.GetPrescale();
+				CyclesLeft -= instCycles;
 
-				if (Prescale != prescale) {
-					Prescale = prescale;
-					CyclesLeft = Prescale;
-				} else {
-					CyclesLeft -= instCycles;
+				if (CyclesLeft <= 0) {
+					Reg.IncrementTMR0();
 
-					if (CyclesLeft <= 0) {
-						Reg.IncrementTMR0();
-
-						CyclesLeft += Prescale;
-					}
+					CyclesLeft += Reg.GetPrescale();
 				}
-				
-				
 			}
 
 			String output = "[" + i + "] " + instName + "(";
@@ -257,8 +246,8 @@ public class PIC {
 	public int Calculate(String instructionName, int a) {
 		return Calculate(instructionName, a, W);
 	}
-	
+
 	public void ResetCyclesLeft() {
-		CyclesLeft = Prescale;
+		CyclesLeft = Reg.GetPrescale();
 	}
 }

@@ -18,7 +18,7 @@ public class Register {
 		int address = GetAddress(pos);
 		Register[address] = value;
 		
-		if(address == 1) {
+		if(address == 1 || address == 0x81) {
 			PIC.ResetCyclesLeft();
 		}
 	}
