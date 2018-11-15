@@ -4,22 +4,25 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Stack;;
+import java.util.Stack;
 
 public class PIC {
 	private int W;
 	private int[] Memory;
 	private Register Reg;
 	private Stack<Integer> Stack;
+	private int Runtime;
 	private int CyclesLeft;
 
-	public void Simulate(String fileName) throws IOException {
+	public void Simulate(String fileName) throws IOException, InterruptedException {
 		W = 0xFF;
 		Stack = new Stack<Integer>();
 		Memory = new int[1024];
 		Reg = new Register(1024, this);
+		Runtime = 0;
 		CyclesLeft = Reg.GetPrescale();
 		Arrays.fill(Memory, 0xFFFF);
+		boolean sleeping = false;
 
 		List<String> data = Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
 
@@ -41,7 +44,14 @@ public class PIC {
 				continue;
 			}
 
-			Instruction instruction = new Instruction(Memory[i]);
+			Instruction instruction;
+
+			if (!sleeping) {
+				instruction = new Instruction(Memory[i]);
+			} else {
+				instruction = new Instruction(0);
+			}
+
 			String instName = instruction.GetName();
 			int[] instArgs = instruction.GetArgs();
 			int instCycles = instruction.GetCycles();
@@ -107,7 +117,7 @@ public class PIC {
 				Reg.Write(instArgs[0], W);
 				break;
 			case "goto":
-				i = instArgs[0] - 1;
+				// i = instArgs[0] - 1;
 				break;
 			case "call":
 				Stack.push(i + 1);
@@ -119,6 +129,18 @@ public class PIC {
 			case "retlw":
 				W = instArgs[0];
 				i = Stack.pop() - 1;
+				break;
+			case "sleep":
+				Reg.SetPD(true);
+				Reg.SetTO(false);
+
+				sleeping = true;
+				break;
+			case "nop":
+				i -= 1;
+				break;
+			case "clrwdt":
+				ClearWDT();
 				break;
 			default:
 				break;
@@ -134,6 +156,19 @@ public class PIC {
 				}
 			}
 
+			Runtime += instCycles;
+
+			if (Runtime >= 18 * 1000 * (Reg.GetPSA() ? Reg.GetPrescale() : 1)) {
+				if (!Reg.GetTO()) {
+					Reg.SetTO(true);
+					sleeping = false;
+				} else {
+					Reg.Reset();
+				}
+
+				Runtime = 0;
+			}
+
 			String output = "[" + i + "] " + instName + "(";
 
 			for (int j = 0; j < instArgs.length; j++) {
@@ -145,7 +180,7 @@ public class PIC {
 					+ Integer.toHexString(Reg.Read(0xC)) + ", wert2=" + Integer.toHexString(Reg.Read(0xD)) + ", ergeb="
 					+ Integer.toHexString(Reg.Read(0xE)) + ", DC=" + (Reg.GetDC() ? 1 : 0) + ", C="
 					+ (Reg.GetC() ? 1 : 0) + ", Z=" + (Reg.GetZ() ? 1 : 0) + ", CyclesLeft=" + CyclesLeft + ", TMR0="
-					+ Reg.GetTMR0();
+					+ Reg.GetTMR0() + ", Runtime=" + Runtime;
 
 			System.out.println(output);
 
@@ -249,5 +284,11 @@ public class PIC {
 
 	public void ResetCyclesLeft() {
 		CyclesLeft = Reg.GetPrescale();
+	}
+
+	public void ClearWDT() {
+		Runtime = 0;
+		Reg.SetPD(false);
+		Reg.SetTO(false);
 	}
 }

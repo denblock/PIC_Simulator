@@ -6,7 +6,7 @@ public class Register {
 		Register = new int[size];
 		Register[0x03] = 0x18;
 		Register[0x81] = 0xff;
-		
+
 		PIC = pic;
 	}
 
@@ -17,10 +17,15 @@ public class Register {
 	public void Write(int pos, int value) {
 		int address = GetAddress(pos);
 		Register[address] = value;
-		
-		if(address == 1 || address == 0x81) {
+
+		if (address == 1 || address == 0x81) {
 			PIC.ResetCyclesLeft();
 		}
+	}
+
+	public void Reset() {
+		Register[2] = 0;
+		Register[3] = Register[3] & 0x1f;
 	}
 
 	private int GetAddress(int pos) {
@@ -33,8 +38,8 @@ public class Register {
 		if (GetBank() == 1) {
 			idx += 0x80;
 		}
-		
-		if(idx == 0x83) {
+
+		if (idx == 0x83) {
 			idx = 0x03;
 		}
 
@@ -81,10 +86,38 @@ public class Register {
 		return (Register[3] & 0x60) >> 5;
 	}
 
+	public boolean GetTO() {
+		return (Register[3] & 0x10) != 0x10;
+	}
+
+	public void SetTO(boolean to) {
+		if (to) {
+			Register[3] = Register[3] & ~0x10;
+		} else {
+			Register[3] = Register[3] | 0x10;
+		}
+	}
+
+	public boolean GetPD() {
+		return (Register[3] & 0x08) != 0x08;
+	}
+	
+	public void SetPD(boolean pd) {
+		if (pd) {
+			Register[3] = Register[3] & ~0x08;
+		} else {
+			Register[3] = Register[3] | 0x08;
+		}
+	}
+
+	public boolean GetPSA() {
+		return (Register[0x81] & 0x08) == 0x01;
+	}
+
 	public int GetPrescale() {
 		int prescale = 0x01 << (Register[0x81] & 0x07);
 
-		if ((Register[0x81] & 0x08) == 0x00) {
+		if (!GetPSA()) {
 			prescale = prescale << 1;
 		}
 
@@ -98,7 +131,7 @@ public class Register {
 	public void IncrementTMR0() {
 		Register[1] = PIC.Calculate("incf", Register[1]);
 	}
-	
+
 	public int GetTMR0() {
 		return Register[1];
 	}
