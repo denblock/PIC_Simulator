@@ -3,9 +3,9 @@
                     00003           ;Funktion: Beschreiben und Lesen des EEPROMs
                     00004           ;(c) St. Lehmann   Ersterstellung: 11.05.2011
                     00005           ;Definition einiger Symbole
-                    00006           ;18.10.2018 mod. für HSO
+                    00006           ;18.10.2018 mod. fÃ¼r HSO
                     00007           
-                    00008           list c=132          ;Zeilenlänge im LST auf 132 Zeichen setzen
+                    00008           list c=132          ;ZeilenlÃ¤nge im LST auf 132 Zeichen setzen
                     00009           
                     00010           indirect equ       0
                     00011           status   equ       03h
@@ -24,7 +24,7 @@
                     00024           ;Festlegen des Codebeginns
                     00025           org       0
                     00026  start      
-0000 3000           00027           movlw     0                   ;der EEPROM-Speicher von 0 bis 3FH (63) gefüllt          
+0000 3000           00027           movlw     0                   ;der EEPROM-Speicher von 0 bis 3FH (63) gefÃ¼llt          
 0001 008C           00028           movwf     count
                     00029  schreiben 
 0002 080C           00030           movf      count,w
@@ -33,8 +33,8 @@
 0005 0088           00033           movwf     eedata              ;dieser Wert an obige Adresse schreiben
                     00034             
 0006 1683           00035           bsf       status,5            ;auf Bank 1
-0007 1208           00036           bcf       eecon1,4            ;EEIF zurücksetzen, wird überwacht
-0008 1508           00037           bsf       eecon1,2            ;WREN-Bit setzen, sonst kein schreiben möglich
+0007 1208           00036           bcf       eecon1,4            ;EEIF zurÃ¼cksetzen, wird Ã¼berwacht
+0008 1508           00037           bsf       eecon1,2            ;WREN-Bit setzen, sonst kein schreiben mÃ¶glich
 0009 1488           00038           bsf       eecon1,1            ;WR-Bit setzen
                     00039             
 000A 3055           00040           movlw     55h                 ;State-Machine anwerfen
@@ -48,7 +48,7 @@
                     00048             
 0010 1108           00049           bcf       eecon1,2            ;WREN auf 0
                     00050             
-0011 1283           00051           bcf       status,5            ;zurück auf Bank 0
+0011 1283           00051           bcf       status,5            ;zurÃ¼ck auf Bank 0
                     00052             
 0012 0A8C           00053           incf      count
 0013 080C           00054           movf      count,w             ;ist der Wert 40H erreicht
@@ -64,7 +64,7 @@
                     00064             
 001A 1683           00065           bsf       status,5            ;auf Bank 1
 001B 1408           00066           bsf       eecon1,0            ;RD-Bit auf 1, wird vom PIC wieder auf 0 gesetzt
-001C 1283           00067           bcf       status,5            ;zurück auf Bank 0
+001C 1283           00067           bcf       status,5            ;zurÃ¼ck auf Bank 0
                     00068             
 001D 0808           00069           movf      eedata,w            ;Wert ins W-Register
                     00070             
