@@ -1,9 +1,6 @@
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+package simulator;
+
 import java.util.Arrays;
-import java.util.List;
 import java.util.Stack;
 
 public class PIC {
@@ -13,41 +10,70 @@ public class PIC {
 	private Stack<Integer> Stack;
 	private int Runtime;
 	private int CyclesLeft;
+	private int PC;
+	private int Ende;
 
-	public void Simulate(String fileName) throws IOException, InterruptedException {
+	private int[] LST_Offset;
+
+	public PIC() {
+		Reset();
+	}
+
+	public void Reset() {
 		W = 0xFF;
 		Stack = new Stack<Integer>();
-		Memory = new int[1024];
 		Reg = new Register(1024, this);
 		Runtime = 0;
 		CyclesLeft = Reg.GetPrescale();
+		PC = 0;
+	}
+
+	public void ParseLST(String lst) {
+		LST_Offset = new int[1024];
+		Memory = new int[1024];
 		Arrays.fill(Memory, 0xFFFF);
-		boolean sleeping = false;
+		PC = 0;
+		Ende = 0;
 
-		List<String> data = Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
+		String[] data = lst.split(System.lineSeparator());
 
-		for (String line : data) {
-			if (line.charAt(0) == ' ') {
+		for (int i = 0; i < data.length; i++) {
+			if (data[i].charAt(0) == ' ') {
 				continue;
 			}
 
-			String[] byteData = line.split(" ");
+			String[] byteData = data[i].split(" ");
 
 			Integer address = Integer.parseInt(byteData[0], 16);
 			Integer command = Integer.parseInt(byteData[1], 16);
 
 			Memory[address] = command;
+			Ende = address;
+
+			LST_Offset[address] = i;
+		}
+	}
+
+	public void Run() {
+		int run = 0;
+		
+		while(run == 0) {
+			run = Step();
+		}
+	}
+
+	public int Step() {
+		if (PC >= Ende) {
+			return - 1;
 		}
 
-		for (int i = 0; i < Memory.length; i++) {
-			if (Memory[i] == 0xFFFF) {
-				continue;
-			}
-
+		do {
 			Instruction instruction;
 
-			if (!sleeping) {
-				instruction = new Instruction(Memory[i]);
+			if (!Reg.GetPD() || Reg.GetTO()) {
+				instruction = new Instruction(Memory[PC]);
+
+				PC++;
 			} else {
 				instruction = new Instruction(0);
 			}
@@ -88,8 +114,8 @@ public class PIC {
 				}
 
 				if ((instName == "decfsz" || instName == "incfsz") && result == 0) {
-					i += 1;
-					instCycles += 1;
+					instCycles++;
+					PC++;
 				}
 				break;
 			case "bcf":
@@ -101,8 +127,8 @@ public class PIC {
 				int bit = Reg.Read(instArgs[0]) & (1 << instArgs[1]);
 
 				if ((instName == "btfsc" && bit == 0) || (instName == "btfss" && bit != 0)) {
-					i += 1;
-					instCycles += 1;
+					instCycles++;
+					PC++;
 				}
 				break;
 			case "clrw":
@@ -117,74 +143,59 @@ public class PIC {
 				Reg.Write(instArgs[0], W);
 				break;
 			case "goto":
-				// i = instArgs[0] - 1;
+				PC = instArgs[0];
 				break;
 			case "call":
-				Stack.push(i + 1);
-				i = instArgs[0] - 1;
+				Stack.push(PC + 1);
+				PC = instArgs[0];
 				break;
 			case "return":
-				i = Stack.pop() - 1;
+				PC = Stack.pop();
 				break;
 			case "retlw":
 				W = instArgs[0];
-				i = Stack.pop() - 1;
+				PC = Stack.pop();
 				break;
 			case "sleep":
 				Reg.SetPD(true);
 				Reg.SetTO(false);
-
-				sleeping = true;
-				break;
-			case "nop":
-				i -= 1;
+				ClearWDT();
 				break;
 			case "clrwdt":
+				Reg.SetPD(false);
+				Reg.SetTO(false);
 				ClearWDT();
 				break;
 			default:
 				break;
 			}
 
-			if (Reg.GetClockSource() == false) {
+			if (!Reg.GetClockSource()) {
 				CyclesLeft -= instCycles;
+			}
+			
+			if (CyclesLeft <= 0) {
+				Reg.IncrementTMR0();
 
-				if (CyclesLeft <= 0) {
-					Reg.IncrementTMR0();
-
-					CyclesLeft += Reg.GetPrescale();
-				}
+				CyclesLeft += Reg.GetPrescale();
 			}
 
 			Runtime += instCycles;
+			int time = 18 * 1000 * (Reg.GetPSA() ? Reg.GetPrescale() : 1);
 
-			if (Runtime >= 18 * 1000 * (Reg.GetPSA() ? Reg.GetPrescale() : 1)) {
+			if (Runtime >= time) {
 				if (!Reg.GetTO()) {
 					Reg.SetTO(true);
-					sleeping = false;
 				} else {
 					Reg.Reset();
 				}
 
-				Runtime = 0;
+				Runtime -= time;
 			}
-
-			String output = "[" + i + "] " + instName + "(";
-
-			for (int j = 0; j < instArgs.length; j++) {
-				output += Integer.toHexString(instArgs[j]) + ", ";
-			}
-
-			output = output.substring(0, output.length() - (instArgs.length > 0 ? 2 : 0));
-			output += "):\tW=" + Integer.toHexString(W) + ", FSR=" + Integer.toHexString(Reg.Read(4)) + ", wert1="
-					+ Integer.toHexString(Reg.Read(0xC)) + ", wert2=" + Integer.toHexString(Reg.Read(0xD)) + ", ergeb="
-					+ Integer.toHexString(Reg.Read(0xE)) + ", DC=" + (Reg.GetDC() ? 1 : 0) + ", C="
-					+ (Reg.GetC() ? 1 : 0) + ", Z=" + (Reg.GetZ() ? 1 : 0) + ", CyclesLeft=" + CyclesLeft + ", TMR0="
-					+ Reg.GetTMR0() + ", Runtime=" + Runtime;
-
-			System.out.println(output);
-
-		}
+			
+		} while (Reg.GetPD() && !Reg.GetTO());
+		
+		return 0;
 	}
 
 	public int Calculate(String instructionName, int a, int b) {
@@ -288,7 +299,31 @@ public class PIC {
 
 	public void ClearWDT() {
 		Runtime = 0;
-		Reg.SetPD(false);
-		Reg.SetTO(false);
+
+		if (Reg.GetPSA()) {
+			Reg.ClearPrescale();
+		}
+	}
+
+	public void RA4_Invoked(boolean rising) {
+		if(Reg.GetINTEDG() == rising) {
+			CyclesLeft--;
+		}
+	}
+
+	public int[] GetRegister() {
+		return Reg.GetRegister();
+	}
+
+	public int GetW() {
+		return W;
+	}
+
+	public int GetPC() {
+		return PC;
+	}
+
+	public int GetLSTOffset(int idx) {
+		return LST_Offset[idx];
 	}
 }

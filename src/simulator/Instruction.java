@@ -1,3 +1,4 @@
+package simulator;
 
 public class Instruction {
 	private String Name;

@@ -1,9 +1,11 @@
+package simulator;
 public class Register {
 	private int[] Register;
 	private PIC PIC;
 
 	public Register(int size, PIC pic) {
 		Register = new int[size];
+		Register[0x02] = 0;
 		Register[0x03] = 0x18;
 		Register[0x81] = 0xff;
 
@@ -26,6 +28,10 @@ public class Register {
 	public void Reset() {
 		Register[2] = 0;
 		Register[3] = Register[3] & 0x1f;
+	}
+	
+	public int[] GetRegister() {
+		return Register;
 	}
 
 	private int GetAddress(int pos) {
@@ -111,7 +117,7 @@ public class Register {
 	}
 
 	public boolean GetPSA() {
-		return (Register[0x81] & 0x08) == 0x01;
+		return (Register[0x81] & 0x08) == 0x08;
 	}
 
 	public int GetPrescale() {
@@ -123,9 +129,17 @@ public class Register {
 
 		return prescale;
 	}
+	
+	public void ClearPrescale() {
+		Register[0x81] = Register[0x81] & 0xf8;
+	}
 
 	public boolean GetClockSource() {
 		return (Register[0x81] & 0x10) == 0x10;
+	}
+	
+	public boolean GetINTEDG() {
+		return (Register[0x81] & 0x40) == 0x40;
 	}
 
 	public void IncrementTMR0() {
