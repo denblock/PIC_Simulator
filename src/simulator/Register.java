@@ -8,6 +8,8 @@ public class Register {
 		Register[0x02] = 0;
 		Register[0x03] = 0x18;
 		Register[0x81] = 0xff;
+		Register[0x85] = 0x1f;
+		Register[0x86] = 0xff;
 
 		PIC = pic;
 	}
@@ -28,6 +30,9 @@ public class Register {
 	public void Reset() {
 		Register[2] = 0;
 		Register[3] = Register[3] & 0x1f;
+		Register[0x81] = 0xff;
+		Register[0x85] = 0x1f;
+		Register[0x86] = 0xff;
 	}
 	
 	public int[] GetRegister() {
@@ -53,39 +58,27 @@ public class Register {
 	}
 
 	public boolean GetC() {
-		return (Register[3] & 0x01) == 0x01;
+		return GetBit(0x03, 0);
 	}
 
 	public void SetC(boolean c) {
-		if (c) {
-			Register[3] = Register[3] | 0x01;
-		} else {
-			Register[3] = Register[3] & ~0x01;
-		}
+		SetBit(0x03, 0, c);
 	}
 
 	public boolean GetDC() {
-		return (Register[3] & 0x02) == 0x02;
+		return GetBit(0x03, 1);
 	}
 
 	public void SetDC(boolean dc) {
-		if (dc) {
-			Register[3] = Register[3] | 0x02;
-		} else {
-			Register[3] = Register[3] & ~0x02;
-		}
+		SetBit(0x03, 1, dc);
 	}
 
 	public boolean GetZ() {
-		return (Register[3] & 0x04) == 0x04;
+		return GetBit(0x03, 2);
 	}
 
 	public void SetZ(boolean z) {
-		if (z) {
-			Register[3] = Register[3] | 0x04;
-		} else {
-			Register[3] = Register[3] & ~0x04;
-		}
+		SetBit(0x03, 2, z);
 	}
 
 	public int GetBank() {
@@ -93,31 +86,23 @@ public class Register {
 	}
 
 	public boolean GetTO() {
-		return (Register[3] & 0x10) != 0x10;
+		return !GetBit(0x03, 4);
 	}
 
 	public void SetTO(boolean to) {
-		if (to) {
-			Register[3] = Register[3] & ~0x10;
-		} else {
-			Register[3] = Register[3] | 0x10;
-		}
+		SetBit(0x03, 4, !to);
 	}
 
 	public boolean GetPD() {
-		return (Register[3] & 0x08) != 0x08;
+		return !GetBit(0x03, 3);
 	}
 	
 	public void SetPD(boolean pd) {
-		if (pd) {
-			Register[3] = Register[3] & ~0x08;
-		} else {
-			Register[3] = Register[3] | 0x08;
-		}
+		SetBit(0x81, 3, !pd);
 	}
 
 	public boolean GetPSA() {
-		return (Register[0x81] & 0x08) == 0x08;
+		return GetBit(0x81, 3);
 	}
 
 	public int GetPrescale() {
@@ -135,18 +120,99 @@ public class Register {
 	}
 
 	public boolean GetClockSource() {
-		return (Register[0x81] & 0x10) == 0x10;
+		return GetBit(0x81, 4);
 	}
 	
 	public boolean GetINTEDG() {
-		return (Register[0x81] & 0x40) == 0x40;
+		return GetBit(0x81, 6);
 	}
 
 	public void IncrementTMR0() {
+		int oldTMR0 = GetTMR0();
+		
 		Register[1] = PIC.Calculate("incf", Register[1]);
+		
+		if(GetGIE() && GetT0IE() && GetTMR0() < oldTMR0) {
+			SetT0IF(true);
+			PIC.Interrupt();
+		}
 	}
 
 	public int GetTMR0() {
 		return Register[1];
+	}
+	
+	public void SetT0IF(boolean t0if) {
+		SetBit(0x0B, 2, t0if);
+	}
+	
+	public boolean GetT0IF() {
+		return GetBit(0x0B, 2);
+	}
+	
+	public void SetT0IE(boolean t0ie) {
+		SetBit(0x0B, 5, t0ie);
+	}
+	
+	public boolean GetT0IE() {
+		return (Register[0x0B] & 0x20) == 0x20;
+	}
+	
+	public void SetGIE(boolean gie) {
+		SetBit(0x0B, 7, gie);
+	}
+	
+	public boolean GetGIE() {
+		return GetBit(0x0B, 7);
+	}
+	
+	public boolean GetINTE() {
+		return GetBit(0x0B, 4);
+	}
+	
+	public void SetINTF(boolean intf) {
+		SetBit(0x0B, 1, intf);
+	}
+	
+	public boolean GetINTF() {
+		return GetBit(0x0B, 1);
+	}
+	
+	public boolean GetRBIE() {
+		return GetBit(0x0B, 3);
+	}
+	
+	public void SetRBIE(boolean rbie) {
+		SetBit(0x0B, 3, rbie);
+	}
+	
+	public boolean GetRBIF() {
+		return GetBit(0x0B, 0);
+	}
+	
+	public void SetRBIF(boolean rbif) {
+		SetBit(0x0B, 0, rbif);
+	}
+	
+	public boolean GetTRISB(int port) {
+		return GetBit(0x86, port);
+	}
+	
+	public boolean GetPortB(int port) {
+		return GetBit(0x06, port);
+	}
+	
+	private void SetBit(int address, int bit, boolean set) {
+		if(set) {
+			Register[address] = Register[address] | (1 << bit);
+		} else {
+			Register[address] = Register[address] & ~(1 << bit);
+		}
+	}
+	
+	private boolean GetBit(int address, int bit) {
+		int b = 1 << bit;
+		
+		return (Register[address] & b) == b;
 	}
 }

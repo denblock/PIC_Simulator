@@ -18,6 +18,8 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.wb.swt.SWTResourceManager;
 
 import simulator.PIC;
+import simulator.Register;
+
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
@@ -27,6 +29,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Point;
 
 public class Main {
@@ -35,7 +38,7 @@ public class Main {
 	private PIC PIC;
 	private String[] SFRs;
 	private boolean Parsed;
-	private boolean Reset;
+	private boolean Running;
 	private boolean Modified;
 	private Path filePath;
 	private StyledText text;
@@ -50,6 +53,12 @@ public class Main {
 	private Composite composite_sfr;
 	private Composite composite_gpr;
 	private Button btnRA4;
+	private Button btnRB0;
+	private Button btnRB4_Change;
+	private Button btnRB5_Change;
+	private Button btnRB6_Change;
+	private Button btnRB7_Change;
+	private Text[] texts_RB;
 
 	/**
 	 * Launch the application.
@@ -97,6 +106,8 @@ public class Main {
 		shell = new Shell();
 		shell.setSize(1592, 1091);
 		shell.setText("PIC Simulator - Unbenannt");
+		
+		texts_RB = new Text[8];
 
 		Menu menu = new Menu(shell, SWT.BAR);
 		shell.setMenuBar(menu);
@@ -265,25 +276,68 @@ public class Main {
 		btnRA4.setText("RA4");
 		btnRA4.addListener(SWT.Selection, (e) -> PIC.RA4_Invoked(btnRA4.getSelection()));
 
+		btnRB0 = new Button(shell, SWT.TOGGLE);
+		btnRB0.setBounds(395, 649, 105, 35);
+		btnRB0.setText("RB0");
+		btnRB0.addListener(SWT.Selection, (e) -> PIC.RB0_Invoked(btnRB0.getSelection()));
+
+		btnRB4_Change = new Button(shell, SWT.NONE);
+		btnRB4_Change.setBounds(506, 649, 105, 35);
+		btnRB4_Change.setText("RB4 Change");
+		btnRB4_Change.addListener(SWT.Selection, (e) -> PIC.RB_Changed(4));
+
+		btnRB5_Change = new Button(shell, SWT.NONE);
+		btnRB5_Change.setBounds(617, 649, 105, 35);
+		btnRB5_Change.setText("RB5 Change");
+		btnRB5_Change.addListener(SWT.Selection, (e) -> PIC.RB_Changed(5));
+
+		btnRB6_Change = new Button(shell, SWT.NONE);
+		btnRB6_Change.setBounds(728, 649, 105, 35);
+		btnRB6_Change.setText("RB6 Change");
+		btnRB6_Change.addListener(SWT.Selection, (e) -> PIC.RB_Changed(6));
+
+		btnRB7_Change = new Button(shell, SWT.NONE);
+		btnRB7_Change.setBounds(839, 649, 105, 35);
+		btnRB7_Change.setText("RB7 Change");
+		btnRB7_Change.addListener(SWT.Selection, (e) -> PIC.RB_Changed(7));
+		
+		for(int i = 0; i < 8; i++) {
+			Text txt = new Text(shell, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
+			txt.setText("RB" + i);
+			txt.setBounds(168 + i * 82, 852, 76, 21);
+			
+			texts_RB[i] = txt;
+		}
+
 		Redraw();
 	}
 
 	private void Redraw() {
+		mntmRun.setText(Running ? "Pause" : "Run");
+		tltmRun.setText(Running ? "Pause" : "Run");
 		mntmRun.setEnabled(Parsed);
-		mntmStep.setEnabled(Parsed);
+		mntmStep.setEnabled(!Running && Parsed);
 		mntmReset.setEnabled(Parsed);
 		tltmRun.setEnabled(Parsed);
-		tltmStep.setEnabled(Parsed);
+		tltmStep.setEnabled(!Running && Parsed);
 		tltmReset.setEnabled(Parsed);
 		btnRA4.setEnabled(Parsed);
+		btnRB0.setEnabled(Parsed);
+		btnRB4_Change.setEnabled(Parsed);
+		btnRB5_Change.setEnabled(Parsed);
+		btnRB6_Change.setEnabled(Parsed);
+		btnRB7_Change.setEnabled(Parsed);
+		
+		Color green = shell.getDisplay().getSystemColor(SWT.COLOR_GREEN);
+		Register reg = PIC.GetRegister();
 
 		for (int i = 0; i < text.getLineCount(); i++) {
 			text.setLineBackground(i, 1, null);
 		}
 
+
 		if (Parsed) {
-			text.setLineBackground(PIC.GetLSTOffset(PIC.GetPC()), 1,
-					shell.getDisplay().getSystemColor(SWT.COLOR_GREEN));
+			text.setLineBackground(PIC.GetLSTOffset(PIC.GetPC()), 1, green);
 			text.setSelection(text.getOffsetAtLine(PIC.GetLSTOffset(PIC.GetPC())));
 		}
 
@@ -296,7 +350,11 @@ public class Main {
 			Text text_1 = (Text) texts[2 * i];
 			Text text_2 = (Text) texts[(2 * i) + 1];
 			int pos = Integer.parseInt(text_1.getText().substring(0, 2), 16);
-			text_2.setText(String.format("%02X", PIC.GetRegister()[pos]));
+			text_2.setText(String.format("%02X", reg.GetRegister()[pos]));
+		}
+		
+		for(int i = 0; i < 8; i++) {
+			texts_RB[i].setBackground(!reg.GetTRISB(i) && reg.GetPortB(i) ? green : null);
 		}
 	}
 
@@ -402,17 +460,20 @@ public class Main {
 
 		@Override
 		public void widgetSelected(SelectionEvent e) {
-			new Thread(() -> {
-				int run = 0;
-				Reset = false;
+			Running = !Running;
+			Redraw();
 
-				while (!Reset && run == 0) {
-					run = PIC.Step();
+			if (Running) {
+				new Thread(() -> {
 
+					while (Running && PIC.Step() == 0) {
+						shell.getDisplay().syncExec(() -> Redraw());
+					}
+
+					Running = !Running;
 					shell.getDisplay().syncExec(() -> Redraw());
-				}
-
-			}).start();
+				}).start();
+			}
 		}
 	}
 
@@ -431,7 +492,7 @@ public class Main {
 
 		@Override
 		public void widgetSelected(SelectionEvent e) {
-			Reset = true;
+			Running = false;
 			PIC.Reset();
 			Redraw();
 		}

@@ -41,6 +41,8 @@ public class PIC {
 			if (data[i].charAt(0) == ' ') {
 				continue;
 			}
+			
+			
 
 			String[] byteData = data[i].split(" ");
 
@@ -56,15 +58,15 @@ public class PIC {
 
 	public void Run() {
 		int run = 0;
-		
-		while(run == 0) {
+
+		while (run == 0) {
 			run = Step();
 		}
 	}
 
 	public int Step() {
 		if (PC >= Ende) {
-			return - 1;
+			return -1;
 		}
 
 		do {
@@ -146,7 +148,7 @@ public class PIC {
 				PC = instArgs[0];
 				break;
 			case "call":
-				Stack.push(PC + 1);
+				Stack.push(PC);
 				PC = instArgs[0];
 				break;
 			case "return":
@@ -154,6 +156,10 @@ public class PIC {
 				break;
 			case "retlw":
 				W = instArgs[0];
+				PC = Stack.pop();
+				break;
+			case "retfie":
+				Reg.SetGIE(true);
 				PC = Stack.pop();
 				break;
 			case "sleep":
@@ -173,7 +179,7 @@ public class PIC {
 			if (!Reg.GetClockSource()) {
 				CyclesLeft -= instCycles;
 			}
-			
+
 			if (CyclesLeft <= 0) {
 				Reg.IncrementTMR0();
 
@@ -192,9 +198,9 @@ public class PIC {
 
 				Runtime -= time;
 			}
-			
+
 		} while (Reg.GetPD() && !Reg.GetTO());
-		
+
 		return 0;
 	}
 
@@ -306,13 +312,33 @@ public class PIC {
 	}
 
 	public void RA4_Invoked(boolean rising) {
-		if(Reg.GetINTEDG() == rising) {
+		if (Reg.GetINTEDG() == rising) {
 			CyclesLeft--;
 		}
 	}
+	
+	public void RB0_Invoked(boolean rising) {
+		if(Reg.GetGIE() && Reg.GetINTE() && Reg.GetINTEDG() == rising) {
+			Reg.SetINTF(true);
+			Interrupt();
+		}
+	}
+	
+	public void RB_Changed(int port) {
+		if(Reg.GetGIE() && Reg.GetRBIE() && Reg.GetTRISB(port)) {
+			Reg.SetRBIF(true);
+			Interrupt();
+		}
+	}
 
-	public int[] GetRegister() {
-		return Reg.GetRegister();
+	public void Interrupt() {
+		Reg.SetGIE(false);
+		Stack.push(PC);
+		PC = 4;
+	}
+
+	public Register GetRegister() {
+		return Reg;
 	}
 
 	public int GetW() {
