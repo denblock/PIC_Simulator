@@ -1,31 +1,38 @@
 package simulator;
 
 import java.util.Arrays;
-import java.util.Stack;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class PIC {
 	private int W;
 	private int[] Memory;
 	private Register Reg;
-	private Stack<Integer> Stack;
+	private Stack Stack;
 	private int Runtime;
 	private int CyclesLeft;
 	private int PC;
 	private int Ende;
+	private boolean WDE;
+	private int Quartz = 4;
+	private Consumer<Integer> PC_Listener;
+	private Consumer<Integer> W_Listener;
+	private Consumer<Integer> Runtime_Listener;
+	BiConsumer<Integer, Integer> Reg_Listener;
 
 	private int[] LST_Offset;
 
-	public PIC() {
-		Reset();
-	}
-
 	public void Reset() {
-		W = 0xFF;
-		Stack = new Stack<Integer>();
+		SetW(0xFF);
+		Stack = new Stack();
 		Reg = new Register(1024, this);
-		Runtime = 0;
+		SetRuntime(0);
 		CyclesLeft = Reg.GetPrescale();
 		PC = 0;
+
+		if (PC_Listener != null) {
+			PC_Listener.accept(0);
+		}
 	}
 
 	public void ParseLST(String lst) {
@@ -34,6 +41,7 @@ public class PIC {
 		Arrays.fill(Memory, 0xFFFF);
 		PC = 0;
 		Ende = 0;
+		SetW(0xFF);
 
 		String[] data = lst.split(System.lineSeparator());
 
@@ -41,8 +49,6 @@ public class PIC {
 			if (data[i].charAt(0) == ' ') {
 				continue;
 			}
-			
-			
 
 			String[] byteData = data[i].split(" ");
 
@@ -53,6 +59,10 @@ public class PIC {
 			Ende = address;
 
 			LST_Offset[address] = i;
+		}
+
+		if (PC_Listener != null) {
+			PC_Listener.accept(0);
 		}
 	}
 
@@ -91,7 +101,7 @@ public class PIC {
 			case "movlw":
 			case "sublw":
 			case "xorlw":
-				W = Calculate(instName, instArgs[0]);
+				SetW(Calculate(instName, instArgs[0]));
 				break;
 			case "addwf":
 			case "andwf":
@@ -112,7 +122,7 @@ public class PIC {
 				if (instArgs[1] == 1) {
 					Reg.Write(instArgs[0], result);
 				} else {
-					W = result;
+					SetW(result);
 				}
 
 				if ((instName == "decfsz" || instName == "incfsz") && result == 0) {
@@ -134,7 +144,7 @@ public class PIC {
 				}
 				break;
 			case "clrw":
-				W = 0;
+				SetW(0);
 				Reg.SetZ(true);
 				break;
 			case "clrf":
@@ -148,19 +158,19 @@ public class PIC {
 				PC = instArgs[0];
 				break;
 			case "call":
-				Stack.push(PC);
+				Stack.Push(PC);
 				PC = instArgs[0];
 				break;
 			case "return":
-				PC = Stack.pop();
+				PC = Stack.Pop();
 				break;
 			case "retlw":
-				W = instArgs[0];
-				PC = Stack.pop();
+				SetW(instArgs[0]);
+				PC = Stack.Pop();
 				break;
 			case "retfie":
 				Reg.SetGIE(true);
-				PC = Stack.pop();
+				PC = Stack.Pop();
 				break;
 			case "sleep":
 				Reg.SetPD(true);
@@ -186,20 +196,27 @@ public class PIC {
 				CyclesLeft += Reg.GetPrescale();
 			}
 
-			Runtime += instCycles;
-			int time = 18 * 1000 * (Reg.GetPSA() ? Reg.GetPrescale() : 1);
+			SetRuntime(Runtime + instCycles * (4 / Quartz));
 
-			if (Runtime >= time) {
-				if (!Reg.GetTO()) {
-					Reg.SetTO(true);
-				} else {
-					Reg.Reset();
+			if (WDE) {
+				int time = 18 * 1000 * (Reg.GetPSA() ? Reg.GetPrescale() : 1);
+
+				if (Runtime >= time) {
+					SetRuntime(Runtime - time);
+					
+					if (Reg.GetPD() && !Reg.GetTO()) {
+						Reg.SetTO(true);
+					} else {
+						Reg.Reset();
+					}
 				}
-
-				Runtime -= time;
 			}
 
 		} while (Reg.GetPD() && !Reg.GetTO());
+
+		if (PC_Listener != null) {
+			PC_Listener.accept(PC);
+		}
 
 		return 0;
 	}
@@ -304,52 +321,101 @@ public class PIC {
 	}
 
 	public void ClearWDT() {
-		Runtime = 0;
+		SetRuntime(0);
 
 		if (Reg.GetPSA()) {
 			Reg.ClearPrescale();
 		}
 	}
 
-	public void RA4_Invoked(boolean rising) {
-		if (Reg.GetINTEDG() == rising) {
+	public void RA_Invoked(int port) {
+		if (port == 4 && Reg.GetClockSource() && Reg.GetINTEDG() != Reg.GetPortA(4)) {
 			CyclesLeft--;
 		}
+
+		Reg.SetPortA(port, !Reg.GetPortA(port));
 	}
-	
-	public void RB0_Invoked(boolean rising) {
-		if(Reg.GetGIE() && Reg.GetINTE() && Reg.GetINTEDG() == rising) {
+
+	public void RB_Invoked(int port) {
+		if (port == 0 && Reg.GetINTE() && Reg.GetINTEDG() != Reg.GetPortB(0)) {
 			Reg.SetINTF(true);
 			Interrupt();
 		}
-	}
-	
-	public void RB_Changed(int port) {
-		if(Reg.GetGIE() && Reg.GetRBIE() && Reg.GetTRISB(port)) {
+
+		Reg.SetPortB(port, !Reg.GetPortB(port));
+
+		if (port >= 4 && port <= 7 && Reg.GetRBIE()) {
 			Reg.SetRBIF(true);
 			Interrupt();
 		}
 	}
 
-	public void Interrupt() {
-		Reg.SetGIE(false);
-		Stack.push(PC);
-		PC = 4;
-	}
+	void Interrupt() {
+		if (Reg.GetPD() && !Reg.GetTO()) {
+			Reg.SetPD(false);
+			Step();
+		}
 
-	public Register GetRegister() {
-		return Reg;
-	}
-
-	public int GetW() {
-		return W;
-	}
-
-	public int GetPC() {
-		return PC;
+		if (Reg.GetGIE()) {
+			Reg.SetGIE(false);
+			Stack.Push(PC);
+			PC = 4;
+		}
 	}
 
 	public int GetLSTOffset(int idx) {
+		if (LST_Offset == null) {
+			return -1;
+		}
+
 		return LST_Offset[idx];
+	}
+
+	public void SetWDE(boolean wde) {
+		WDE = wde;
+	}
+	
+	public void SetQuartz(int quartz) {
+		Quartz = quartz;
+	}
+
+	public void SetPCListener(Consumer<Integer> f) {
+		PC_Listener = f;
+	}
+
+	public void SetWListener(Consumer<Integer> f) {
+		W_Listener = f;
+	}
+	
+	public void SetRuntimeListener(Consumer<Integer> f) {
+		Runtime_Listener = f;
+	}
+
+	public void SetRegListener(BiConsumer<Integer, Integer> f) {
+		Reg_Listener = f;
+	}
+
+	private void SetW(int w) {
+		if (W == w) {
+			return;
+		}
+
+		W = w;
+
+		if (W_Listener != null) {
+			W_Listener.accept(w);
+		}
+	}
+	
+	private void SetRuntime(int runtime) {
+		if(Runtime == runtime) {
+			return;
+		}
+		
+		Runtime = runtime;
+		
+		if(Runtime_Listener != null) {
+			Runtime_Listener.accept(runtime);
+		}
 	}
 }
