@@ -123,7 +123,7 @@ public class Main {
 		shell = new Shell(SWT.CLOSE | SWT.TITLE | SWT.MIN);
 		shell.setImage(new Image(shell.getDisplay(), Main.class.getClassLoader().getResourceAsStream("micro.ico")));
 		Rectangle rect = shell.getDisplay().getClientArea();
-		shell.setSize((int) (rect.width * 0.5382), (int) (rect.height * 0.6747));
+		shell.setSize((int) (rect.width * 0.5382), (int) (rect.width * 0.369));
 		shell.setText("PIC Simulator - Unbenannt");
 
 		rect = shell.getClientArea();
@@ -442,6 +442,7 @@ public class Main {
 
 		textW_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
 		textW_Content.setBounds(136, 79, 106, 35);
+		textW_Content.setText("FF");
 
 		Text textRuntime = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
 		textRuntime.setText("Runtime");
@@ -704,12 +705,12 @@ public class Main {
 			hex_text.setText(str);
 		}
 	}
-	
+
 	private void EEPROM_Changed(int address, int value) {
-		Text hex_text = (Text)composite_eeprom.getChildren()[(address * 2) + 1];
+		Text hex_text = (Text) composite_eeprom.getChildren()[(address * 2) + 1];
 		String str = IntToString(value);
-		
-		if(hex_text.getText() != str) {
+
+		if (hex_text.getText() != str) {
 			hex_text.setText(str);
 		}
 	}
@@ -738,7 +739,7 @@ public class Main {
 		if (Running) {
 			new Thread(() -> {
 				long n = System.currentTimeMillis();
-				
+
 				while (PIC.Step() != -1) {
 					if (!Running || Reset_Requested) {
 						break;
