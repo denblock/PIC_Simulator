@@ -79,146 +79,143 @@ public class PIC {
 			return -1;
 		}
 
-		do {
-			Instruction instruction;
+		Instruction instruction;
 
-			if (!Reg.GetPD() || Reg.GetTO()) {
-				instruction = new Instruction(Memory[PC]);
+		if (!Reg.GetPD() || Reg.GetTO()) {
+			instruction = new Instruction(Memory[PC]);
 
-				PC++;
+			PC++;
+		} else {
+			instruction = new Instruction(0);
+		}
+
+		String instName = instruction.GetName();
+		int[] instArgs = instruction.GetArgs();
+		int instCycles = instruction.GetCycles();
+
+		switch (instName) {
+		case "addlw":
+		case "andlw":
+		case "iorlw":
+		case "movlw":
+		case "sublw":
+		case "xorlw":
+			SetW(Calculate(instName, instArgs[0]));
+			break;
+		case "addwf":
+		case "andwf":
+		case "comf":
+		case "decf":
+		case "decfsz":
+		case "incf":
+		case "incfsz":
+		case "iorwf":
+		case "movf":
+		case "rlf":
+		case "rrf":
+		case "subwf":
+		case "swapf":
+		case "xorwf":
+			int result = Calculate(instName, Reg.Read(instArgs[0]));
+
+			if (instArgs[1] == 1) {
+				Reg.Write(instArgs[0], result);
 			} else {
-				instruction = new Instruction(0);
+				SetW(result);
 			}
 
-			String instName = instruction.GetName();
-			int[] instArgs = instruction.GetArgs();
-			int instCycles = instruction.GetCycles();
+			if ((instName == "decfsz" || instName == "incfsz") && result == 0) {
+				instCycles++;
+				PC++;
+			}
+			break;
+		case "bcf":
+		case "bsf":
+			Reg.Write(instArgs[0], Calculate(instName, Reg.Read(instArgs[0]), instArgs[1]));
+			break;
+		case "btfsc":
+		case "btfss":
+			int bit = Reg.Read(instArgs[0]) & (1 << instArgs[1]);
 
-			switch (instName) {
-			case "addlw":
-			case "andlw":
-			case "iorlw":
-			case "movlw":
-			case "sublw":
-			case "xorlw":
-				SetW(Calculate(instName, instArgs[0]));
-				break;
-			case "addwf":
-			case "andwf":
-			case "comf":
-			case "decf":
-			case "decfsz":
-			case "incf":
-			case "incfsz":
-			case "iorwf":
-			case "movf":
-			case "rlf":
-			case "rrf":
-			case "subwf":
-			case "swapf":
-			case "xorwf":
-				int result = Calculate(instName, Reg.Read(instArgs[0]));
+			if ((instName == "btfsc" && bit == 0) || (instName == "btfss" && bit != 0)) {
+				instCycles++;
+				PC++;
+			}
+			break;
+		case "clrw":
+			SetW(0);
+			Reg.SetZ(true);
+			break;
+		case "clrf":
+			Reg.Write(instArgs[0], 0);
+			Reg.SetZ(true);
+			break;
+		case "movwf":
+			Reg.Write(instArgs[0], W);
+			break;
+		case "goto":
+			PC = instArgs[0];
+			break;
+		case "call":
+			Stack.Push(PC);
+			PC = instArgs[0];
+			break;
+		case "return":
+			PC = Stack.Pop();
+			break;
+		case "retlw":
+			SetW(instArgs[0]);
+			PC = Stack.Pop();
+			break;
+		case "retfie":
+			Reg.SetGIE(true);
+			PC = Stack.Pop();
+			break;
+		case "sleep":
+			Reg.SetPD(true);
+			Reg.SetTO(false);
+			ClearWDT();
+			break;
+		case "clrwdt":
+			Reg.SetPD(false);
+			Reg.SetTO(false);
+			ClearWDT();
+			break;
+		default:
+			break;
+		}
 
-				if (instArgs[1] == 1) {
-					Reg.Write(instArgs[0], result);
+		if (!Reg.GetClockSource()) {
+			CyclesLeft -= instCycles;
+		}
+
+		if (CyclesLeft <= 0) {
+			Reg.IncrementTMR0();
+
+			CyclesLeft += Reg.GetPrescale();
+		}
+
+		SetRuntime(Runtime + instCycles * (4 / Quartz));
+
+		if (WDE) {
+			int time = 18 * 1000 * (Reg.GetPSA() ? Reg.GetPrescale() : 1);
+
+			if (Runtime >= time) {
+				SetRuntime(Runtime - time);
+
+				if (Reg.GetPD() && !Reg.GetTO()) {
+					Reg.SetTO(true);
 				} else {
-					SetW(result);
-				}
-
-				if ((instName == "decfsz" || instName == "incfsz") && result == 0) {
-					instCycles++;
-					PC++;
-				}
-				break;
-			case "bcf":
-			case "bsf":
-				Reg.Write(instArgs[0], Calculate(instName, Reg.Read(instArgs[0]), instArgs[1]));
-				break;
-			case "btfsc":
-			case "btfss":
-				int bit = Reg.Read(instArgs[0]) & (1 << instArgs[1]);
-
-				if ((instName == "btfsc" && bit == 0) || (instName == "btfss" && bit != 0)) {
-					instCycles++;
-					PC++;
-				}
-				break;
-			case "clrw":
-				SetW(0);
-				Reg.SetZ(true);
-				break;
-			case "clrf":
-				Reg.Write(instArgs[0], 0);
-				Reg.SetZ(true);
-				break;
-			case "movwf":
-				Reg.Write(instArgs[0], W);
-				break;
-			case "goto":
-				PC = instArgs[0];
-				break;
-			case "call":
-				Stack.Push(PC);
-				PC = instArgs[0];
-				break;
-			case "return":
-				PC = Stack.Pop();
-				break;
-			case "retlw":
-				SetW(instArgs[0]);
-				PC = Stack.Pop();
-				break;
-			case "retfie":
-				Reg.SetGIE(true);
-				PC = Stack.Pop();
-				break;
-			case "sleep":
-				Reg.SetPD(true);
-				Reg.SetTO(false);
-				ClearWDT();
-				break;
-			case "clrwdt":
-				Reg.SetPD(false);
-				Reg.SetTO(false);
-				ClearWDT();
-				break;
-			default:
-				break;
-			}
-
-			if (!Reg.GetClockSource()) {
-				CyclesLeft -= instCycles;
-			}
-
-			if (CyclesLeft <= 0) {
-				Reg.IncrementTMR0();
-
-				CyclesLeft += Reg.GetPrescale();
-			}
-
-			SetRuntime(Runtime + instCycles * (4 / Quartz));
-
-			if (WDE) {
-				int time = 18 * 1000 * (Reg.GetPSA() ? Reg.GetPrescale() : 1);
-
-				if (Runtime >= time) {
-					SetRuntime(Runtime - time);
-					
-					if (Reg.GetPD() && !Reg.GetTO()) {
-						Reg.SetTO(true);
-					} else {
-						Reg.Reset();
-					}
+					Reg.Reset();
 				}
 			}
+		}
 
-		} while (Reg.GetPD() && !Reg.GetTO());
-
-		if (PC_Listener != null) {
+		if ((!Reg.GetPD() || Reg.GetTO()) && PC_Listener != null) {
 			PC_Listener.accept(PC);
 		}
 
-		return 0;
+		return Reg.GetPD() && !Reg.GetTO() ? 1 : 0;
 	}
 
 	public int Calculate(String instructionName, int a, int b) {
@@ -374,7 +371,7 @@ public class PIC {
 	public void SetWDE(boolean wde) {
 		WDE = wde;
 	}
-	
+
 	public void SetQuartz(int quartz) {
 		Quartz = quartz;
 	}
@@ -386,7 +383,7 @@ public class PIC {
 	public void SetWListener(Consumer<Integer> f) {
 		W_Listener = f;
 	}
-	
+
 	public void SetRuntimeListener(Consumer<Integer> f) {
 		Runtime_Listener = f;
 	}
@@ -406,15 +403,15 @@ public class PIC {
 			W_Listener.accept(w);
 		}
 	}
-	
+
 	private void SetRuntime(int runtime) {
-		if(Runtime == runtime) {
+		if (Runtime == runtime) {
 			return;
 		}
-		
+
 		Runtime = runtime;
-		
-		if(Runtime_Listener != null) {
+
+		if (Runtime_Listener != null) {
 			Runtime_Listener.accept(runtime);
 		}
 	}

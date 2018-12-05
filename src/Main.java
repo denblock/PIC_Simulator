@@ -8,8 +8,6 @@ import java.util.List;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Menu;
@@ -21,6 +19,7 @@ import org.eclipse.swt.widgets.Text;
 import simulator.PIC;
 
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.Bullet;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -45,9 +44,9 @@ import org.eclipse.swt.widgets.Combo;
 public class Main {
 	protected Shell shell;
 	private PIC PIC;
-	private String[] SFRs;
 	private boolean Parsed;
 	private boolean Running;
+	private boolean Sleeping;
 	private boolean Reset_Requested;
 	private boolean Modified;
 	private boolean Values_Binary;
@@ -97,11 +96,6 @@ public class Main {
 		PIC.SetRuntimeListener((runtime) -> shell.getDisplay().syncExec(() -> Runtime_Changed(runtime)));
 		PIC.SetRegListener((address, value) -> shell.getDisplay().syncExec(() -> Register_Changed(address, value)));
 
-		SFRs = new String[] { "00h - Indirect addr.", "01h - TMR0", "02h - PCL", "03h - STATUS", "04h - FSR",
-				"05h - PORTA", "06h - PORTB", "07h - ", "08h - EEDATA", "09h - EEADR", "0Ah - PCLATH", "0Bh - INTCON",
-				"80h - Indirect addr.", "81h - OPTION", "82h - PCL", "83h - STATUS", "84h - FSR", "85h - TRISA",
-				"86h - TRISB", "87h - ", "88h - EECON1", "89h - EECON2", "8Ah - PCLATH", "8Bh - INTCON" };
-
 		Display display = Display.getDefault();
 		createContents();
 		shell.open();
@@ -120,8 +114,7 @@ public class Main {
 	 */
 	protected void createContents() throws IOException {
 		shell = new Shell(SWT.CLOSE | SWT.TITLE | SWT.MIN);
-		shell.setImage(new Image(shell.getDisplay(), "C:\\Users\\Denis\\Downloads\\micro.ico"));
-		// shell.setSize(1590, 1090);
+		shell.setImage(new Image(shell.getDisplay(), Main.class.getClassLoader().getResourceAsStream("micro.ico")));
 		Rectangle rect = shell.getDisplay().getClientArea();
 		shell.setSize((int) (rect.width * 0.5382), (int) (rect.height * 0.6747));
 		shell.setText("PIC Simulator - Unbenannt");
@@ -143,20 +136,70 @@ public class Main {
 		mntmFile.setMenu(menu_1);
 
 		MenuItem mntmNew = new MenuItem(menu_1, SWT.NONE);
-		mntmNew.addSelectionListener(new newSelectionListener());
 		mntmNew.setText("New");
+		mntmNew.addListener(SWT.Selection, (e) -> {
+			if (Modified) {
+				MessageBox messageBox = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES | SWT.NO);
+				messageBox.setMessage(
+						"Möchten Sie Ihre Änderungen an \"" + shell.getText().substring(16) + "\" speichern?");
+				messageBox.setText("PIC Simulator");
+
+				if (messageBox.open() == SWT.YES) {
+					try {
+						SaveFile(filePath == null);
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+				}
+			}
+
+			filePath = null;
+			text.setText("");
+			shell.setText("PIC Simulator - Unbenannt");
+		});
 
 		MenuItem mntmOpen = new MenuItem(menu_1, SWT.NONE);
-		mntmOpen.addSelectionListener(new openSelectionListener());
 		mntmOpen.setText("Open...");
+		mntmOpen.addListener(SWT.Selection, (e) -> {
+			FileDialog fd = new FileDialog(shell, SWT.OPEN);
+			fd.setFilterExtensions(new String[] { "*.lst" });
+			String selected = fd.open();
+
+			if (selected != null) {
+				try {
+					filePath = Paths.get(selected);
+					List<String> arr = Files.readAllLines(filePath, StandardCharsets.UTF_8);
+					String data = String.join(System.lineSeparator(), arr);
+					text.setText(data);
+					shell.setText("PIC Simulator - " + filePath.getFileName());
+
+					Modified = false;
+					SetParsed(false);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		});
 
 		MenuItem mntmSave = new MenuItem(menu_1, SWT.NONE);
-		mntmSave.addSelectionListener(new saveSelectionListener());
 		mntmSave.setText("Save");
+		mntmSave.addListener(SWT.Selection, (e) -> {
+			try {
+				SaveFile(filePath == null);
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		});
 
 		MenuItem mntmSaveAs = new MenuItem(menu_1, SWT.NONE);
-		mntmSaveAs.addSelectionListener(new saveAsSelectionListener());
 		mntmSaveAs.setText("Save As...");
+		mntmSaveAs.addListener(SWT.Selection, (e) -> {
+			try {
+				SaveFile(true);
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		});
 
 		new MenuItem(menu_1, SWT.SEPARATOR);
 
@@ -171,26 +214,81 @@ public class Main {
 		mntmSimulator.setMenu(menu_2);
 
 		MenuItem mntmParse = new MenuItem(menu_2, SWT.NONE);
-		mntmParse.addSelectionListener(new parseSelectionListener());
 		mntmParse.setText("Parse");
 		mntmParse.setEnabled(false);
+		mntmParse.addListener(SWT.Selection, (e) -> {
+			PIC.ParseLST(text.getText());
+			SetParsed(true);
+		});
 
 		new MenuItem(menu_2, SWT.SEPARATOR);
 
+		Listener runListener = (e) -> {
+			SetRunning(!Running);
+
+			if (Running) {
+				new Thread(() -> {
+					long n = System.currentTimeMillis();
+					while (PIC.Step() != -1) {
+						if (!Running || Reset_Requested) {
+							break;
+						}
+					}
+
+					System.out.println(System.currentTimeMillis() - n);
+
+					shell.getDisplay().syncExec(() -> SetRunning(false));
+
+					if (Reset_Requested) {
+						PIC.Reset();
+						Reset_Requested = false;
+					}
+				}).start();
+			}
+		};
+
+		Listener stepListener = (e) -> {
+			new Thread(() -> {
+				int step = PIC.Step();
+
+				if (step == 1) {
+					Sleeping = true;
+
+					while (PIC.Step() == 1) {
+						if (Reset_Requested) {
+							PIC.Reset();
+							Reset_Requested = false;
+							break;
+						}
+					}
+
+					Sleeping = false;
+				}
+			}).start();
+		};
+
+		Listener resetListener = (e) -> {
+			if (Running || Sleeping) {
+				Reset_Requested = true;
+			} else {
+				PIC.Reset();
+			}
+		};
+
 		mntmRun = new MenuItem(menu_2, SWT.NONE);
-		mntmRun.addSelectionListener(new runSelectionListener());
+		mntmRun.addListener(SWT.Selection, runListener);
 		mntmRun.setText("Run");
 		mntmRun.setEnabled(false);
 
 		mntmStep = new MenuItem(menu_2, SWT.NONE);
-		mntmStep.addSelectionListener(new stepSelectionListener());
+		mntmStep.addListener(SWT.Selection, stepListener);
 		mntmStep.setText("Step");
 		mntmStep.setEnabled(false);
 
 		new MenuItem(menu_2, SWT.SEPARATOR);
 
 		mntmReset = new MenuItem(menu_2, SWT.NONE);
-		mntmReset.addSelectionListener(new resetSelectionListener());
+		mntmReset.addListener(SWT.Selection, resetListener);
 		mntmReset.setText("Reset");
 		mntmReset.setEnabled(false);
 
@@ -217,17 +315,17 @@ public class Main {
 		toolBar.setBounds(10, 0, rect.width, 33);
 
 		tltmRun = new ToolItem(toolBar, SWT.NONE);
-		tltmRun.addSelectionListener(new runSelectionListener());
+		tltmRun.addListener(SWT.Selection, runListener);
 		tltmRun.setText("Run");
 		tltmRun.setEnabled(false);
 
 		tltmStep = new ToolItem(toolBar, SWT.NONE);
-		tltmStep.addSelectionListener(new stepSelectionListener());
+		tltmStep.addListener(SWT.Selection, stepListener);
 		tltmStep.setText("Step");
 		tltmStep.setEnabled(false);
 
 		tltmReset = new ToolItem(toolBar, SWT.NONE);
-		tltmReset.addSelectionListener(new resetSelectionListener());
+		tltmReset.addListener(SWT.Selection, resetListener);
 		tltmReset.setText("Reset");
 		tltmReset.setEnabled(false);
 
@@ -243,7 +341,7 @@ public class Main {
 
 		text = new StyledText(shell, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
 		text.setFont(new Font(shell.getDisplay(), new FontData("Consolas", 9, SWT.NORMAL)));
-		text.setBounds(40, 45, rect.width - 542, (int) (rect.width * 0.3769));
+		text.setBounds(10, 45, rect.width - 512, (int) (rect.width * 0.3769));
 		Displayed_Lines = (text.getClientArea().height / text.getLineHeight()) - 1;
 		text.addListener(SWT.Modify, (e) -> {
 			for (int i = 0; i < text.getLineCount(); i++) {
@@ -307,6 +405,11 @@ public class Main {
 
 		composite_gpr = new Composite(scrolledComposite_1, SWT.NONE);
 		composite_gpr.setLayout(new GridLayout(2, false));
+
+		String[] SFRs = new String[] { "00h - Indirect addr.", "01h - TMR0", "02h - PCL", "03h - STATUS", "04h - FSR",
+				"05h - PORTA", "06h - PORTB", "07h - ", "08h - EEDATA", "09h - EEADR", "0Ah - PCLATH", "0Bh - INTCON",
+				"80h - Indirect addr.", "81h - OPTION", "82h - PCL", "83h - STATUS", "84h - FSR", "85h - TRISA",
+				"86h - TRISB", "87h - ", "88h - EECON1", "89h - EECON2", "8Ah - PCLATH", "8Bh - INTCON" };
 
 		for (int i = 0; i < SFRs.length; i++) {
 			Text text_1 = new Text(composite_sfr, SWT.BORDER | SWT.READ_ONLY);
@@ -402,6 +505,10 @@ public class Main {
 		combo.setItems("4MHz Quartz", "1MHz Quartz");
 		combo.select(0);
 		combo.addListener(SWT.Selection, (e) -> PIC.SetQuartz(combo.getSelectionIndex() == 0 ? 4 : 1));
+		
+		Group grpStatus = new Group(shell, SWT.NONE);
+		grpStatus.setText("Status");
+		grpStatus.setBounds(498, 834, 70, 92);
 
 		PIC.Reset();
 
@@ -568,134 +675,6 @@ public class Main {
 		Files.write(filePath, text.getText().getBytes(StandardCharsets.UTF_8));
 		shell.setText("PIC Simulator - " + filePath.getFileName());
 		Modified = false;
-	}
-
-	private class newSelectionListener extends SelectionAdapter {
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			if (Modified) {
-				MessageBox messageBox = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES | SWT.NO);
-				messageBox.setMessage(
-						"Möchten Sie Ihre Änderungen an \"" + shell.getText().substring(16) + "\" speichern?");
-				messageBox.setText("PIC Simulator");
-
-				if (messageBox.open() == SWT.YES) {
-					try {
-						SaveFile(filePath == null);
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
-				}
-			}
-
-			filePath = null;
-			text.setText("");
-			shell.setText("PIC Simulator - Unbenannt");
-		}
-	}
-
-	private class openSelectionListener extends SelectionAdapter {
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			FileDialog fd = new FileDialog(shell, SWT.OPEN);
-			fd.setFilterExtensions(new String[] { "*.lst" });
-			String selected = fd.open();
-
-			if (selected != null) {
-				try {
-					filePath = Paths.get(selected);
-					List<String> arr = Files.readAllLines(filePath, StandardCharsets.UTF_8);
-					String data = String.join(System.lineSeparator(), arr);
-					text.setText(data);
-					shell.setText("PIC Simulator - " + filePath.getFileName());
-
-					Modified = false;
-					SetParsed(false);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-			}
-		}
-	}
-
-	private class saveSelectionListener extends SelectionAdapter {
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			try {
-				SaveFile(filePath == null);
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-		}
-	}
-
-	private class saveAsSelectionListener extends SelectionAdapter {
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			try {
-				SaveFile(true);
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-		}
-	}
-
-	private class parseSelectionListener extends SelectionAdapter {
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			PIC.ParseLST(text.getText());
-			SetParsed(true);
-		}
-	}
-
-	private class runSelectionListener extends SelectionAdapter {
-
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			SetRunning(!Running);
-
-			if (Running) {
-				new Thread(() -> {
-					long n = System.currentTimeMillis();
-					while (PIC.Step() == 0) {
-						if (!Running || Reset_Requested) {
-							break;
-						}
-					}
-
-					System.out.println(System.currentTimeMillis() - n);
-
-					shell.getDisplay().syncExec(() -> SetRunning(false));
-
-					if (Reset_Requested) {
-						PIC.Reset();
-						Reset_Requested = false;
-					}
-				}).start();
-			}
-		}
-	}
-
-	private class stepSelectionListener extends SelectionAdapter {
-
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			new Thread(() -> {
-				PIC.Step();
-			}).start();
-		}
-	}
-
-	private class resetSelectionListener extends SelectionAdapter {
-
-		@Override
-		public void widgetSelected(SelectionEvent e) {
-			if (Running) {
-				Reset_Requested = true;
-			} else {
-				PIC.Reset();
-			}
-		}
 	}
 
 	private String IntToString(int val) {
