@@ -472,31 +472,35 @@ public class Main {
 
 		textZero_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
 		textZero_Content.setBounds(386, 120, 50, 35);
+		
+		Group grpPorts = new Group(shell, SWT.NONE);
+		grpPorts.setBounds(10, (int)(rect.width * 0.4892), 902, 124);
+		grpPorts.setText("I/O Ports");
 
 		for (int i = 0; i < 8; i++) {
 			final int _i = Integer.valueOf(i);
 
-			btns_RA[i] = new Button(shell, SWT.NONE);
+			btns_RA[i] = new Button(grpPorts, SWT.NONE);
 			btns_RA[i].setText("RA" + i);
-			btns_RA[i].setBounds(10 + i * 111, (int) (rect.width * 0.3769) + 241, 105, 35);
+			btns_RA[i].setBounds(10 + i * 111, 38, 105, 35);
 			btns_RA[i].setEnabled(false);
 			btns_RA[i].addListener(SWT.Selection, (e) -> PIC.RA_Invoked(_i));
-
-			btns_RB[i] = new Button(shell, SWT.NONE);
-			btns_RB[i].setText("RB" + i);
-			btns_RB[i].setBounds(10 + i * 111, (int) (rect.width * 0.3769) + 282, 105, 35);
-			btns_RB[i].setEnabled(false);
-			btns_RB[i].addListener(SWT.Selection, (e) -> PIC.RB_Invoked(_i));
-
-			texts_RA[i] = new Text(shell, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
+			
+			texts_RA[i] = new Text(grpPorts, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
 			texts_RA[i].setText("RA" + i);
-			texts_RA[i].setBounds(10 + i * 111, (int) (rect.width * 0.3769) + 241, 105, 35);
+			texts_RA[i].setBounds(10 + i * 111, 38, 105, 35);
 			texts_RA[i].setEnabled(false);
 			texts_RA[i].setVisible(false);
 
-			texts_RB[i] = new Text(shell, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
+			btns_RB[i] = new Button(grpPorts, SWT.NONE);
+			btns_RB[i].setText("RB" + i);
+			btns_RB[i].setBounds(10 + i * 111, 79, 105, 35);
+			btns_RB[i].setEnabled(false);
+			btns_RB[i].addListener(SWT.Selection, (e) -> PIC.RB_Invoked(_i));
+
+			texts_RB[i] = new Text(grpPorts, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
 			texts_RB[i].setText("RB" + i);
-			texts_RB[i].setBounds(10 + i * 111, (int) (rect.width * 0.3769) + 282, 105, 35);
+			texts_RB[i].setBounds(10 + i * 111, 79, 105, 35);
 			texts_RB[i].setEnabled(false);
 			texts_RB[i].setVisible(false);
 		}
@@ -650,11 +654,12 @@ public class Main {
 			if (address == 0x05 || address == 0x06 || address == 0x85 || address == 0x86) {
 				boolean portA = (address & 0x05) == 0x05;
 
-				Color green = shell.getDisplay().getSystemColor(SWT.COLOR_GREEN);
 				Button[] btns = portA ? btns_RA : btns_RB;
 				Text[] txts = portA ? texts_RA : texts_RB;
 
 				if (address == 0x05 || address == 0x06) {
+					Color green = shell.getDisplay().getSystemColor(SWT.COLOR_GREEN);
+					
 					for (int i = 0; i < 8; i++) {
 						Color bg = (value & (1 << i)) == 0 ? null : green;
 
