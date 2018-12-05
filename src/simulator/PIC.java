@@ -7,10 +7,11 @@ import java.util.function.Consumer;
 public class PIC {
 	private int W;
 	private int[] Memory;
+	int[] EEPROM;
 	private Register Reg;
 	private Stack Stack;
 	private int Runtime;
-	private int CyclesLeft;
+	int CyclesLeft;
 	private int PC;
 	private int Ende;
 	private boolean WDE;
@@ -21,11 +22,16 @@ public class PIC {
 	BiConsumer<Integer, Integer> Reg_Listener;
 
 	private int[] LST_Offset;
+	
+	public PIC() {
+		Reset();
+	}
 
 	public void Reset() {
 		SetW(0xFF);
+		EEPROM = new int[64];
+		Reg = new Register(this);
 		Stack = new Stack();
-		Reg = new Register(1024, this);
 		SetRuntime(0);
 		CyclesLeft = Reg.GetPrescale();
 		PC = 0;
@@ -207,6 +213,7 @@ public class PIC {
 					Reg.SetTO(true);
 				} else {
 					Reg.Reset();
+					Reg.SetWRERR(true);
 				}
 			}
 		}
@@ -311,10 +318,6 @@ public class PIC {
 
 	public int Calculate(String instructionName, int a) {
 		return Calculate(instructionName, a, W);
-	}
-
-	public void ResetCyclesLeft() {
-		CyclesLeft = Reg.GetPrescale();
 	}
 
 	public void ClearWDT() {

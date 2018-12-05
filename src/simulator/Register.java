@@ -3,14 +3,13 @@ package simulator;
 public class Register {
 	private int[] Register;
 	private PIC PIC;
+	private boolean EEPROM_Write_Sequence;
 
-	public Register(int size, PIC pic) {
+	public Register(PIC pic) {
 		PIC = pic;
 
-		Register = new int[size];
+		Register = new int[1024];
 		DirectWrite(0x03, 0x18);
-		DirectWrite(0x05, 0);
-		DirectWrite(0x06, 0);
 		DirectWrite(0x81, 0xff);
 		DirectWrite(0x85, 0x1f);
 		DirectWrite(0x86, 0xff);
@@ -22,10 +21,32 @@ public class Register {
 
 	public void Write(int pos, int value) {
 		int address = GetAddress(pos);
+		int oldValue = Register[address];
+		
+		if(address == 0x88 && (value & 0x02) == 0x02 && !GetWREN()) {
+			value = value & ~0x02;
+		}
+		
 		DirectWrite(address, value);
 
-		if (address == 1 || address == 0x81) {
-			PIC.ResetCyclesLeft();
+		if (address == 0x01 || address == 0x81) {
+			PIC.CyclesLeft = GetPrescale();
+		} else if(address == 0x88 || address == 0x89) {
+			if(address == 0x88 && GetRD()) {
+				DirectWrite(0x08, PIC.EEPROM[Register[0x09]]);
+				SetRD(false);
+			}
+			
+			if(address == 0x89) {
+				EEPROM_Write_Sequence = oldValue == 0x55 && value == 0xAA;
+			}
+			
+			if(GetWR() && EEPROM_Write_Sequence) {
+				PIC.EEPROM[Register[0x09]] = Register[0x08];
+				SetWR(false);
+				EEPROM_Write_Sequence = false;
+				SetEEIF(true);
+			}
 		}
 	}
 
@@ -35,6 +56,7 @@ public class Register {
 		DirectWrite(0x81, 0xff);
 		DirectWrite(0x85, 0x1f);
 		DirectWrite(0x86, 0xff);
+		DirectWrite(0x88, 0);
 	}
 
 	private int GetAddress(int pos) {
@@ -48,7 +70,7 @@ public class Register {
 			idx += 0x80;
 		}
 
-		if (idx == 0x82 || idx == 0x83 || idx == 0x84 || idx == 0x8A || idx == 0x8B) {
+		if (idx == 0x82 || idx == 0x83 || idx == 0x84 || idx == 0x8A || idx == 0x8B || (idx >= 0x8C && idx <= 0xAF)) {
 			idx -= 0x80;
 		}
 
@@ -128,7 +150,7 @@ public class Register {
 	public void IncrementTMR0() {
 		int oldTMR0 = GetTMR0();
 
-		DirectWrite(1, PIC.Calculate("incf", Register[1]));
+		DirectWrite(1, PIC.Calculate("incf", oldTMR0));
 
 		if (GetGIE() && GetT0IE() && GetTMR0() < oldTMR0) {
 			SetT0IF(true);
@@ -215,6 +237,34 @@ public class Register {
 	public boolean GetTRISB(int port) {
 		return GetBit(0x86, port);
 	}
+	
+	public void SetRD(boolean rd) {
+		SetBit(0x88, 0, rd);
+	}
+	
+	public boolean GetRD() {
+		return GetBit(0x88, 0);
+	}
+	
+	public void SetWR(boolean wr) {
+		SetBit(0x88, 1, wr);
+	}
+	
+	public boolean GetWR() {
+		return GetBit(0x88, 1);
+	}
+	
+	public boolean GetWREN() {
+		return GetBit(0x88, 2);
+	}
+	
+	public void SetWRERR(boolean wrerr) {
+		SetBit(0x88, 3, wrerr);
+	}
+	
+	public void SetEEIF(boolean eeif) {
+		SetBit(0x88, 4, eeif);
+	}
 
 	private void SetBit(int address, int bit, boolean set) {
 		if (set) {
@@ -231,6 +281,10 @@ public class Register {
 	}
 
 	private void DirectWrite(int pos, int value) {
+		if(Register[pos] == value) {
+			return;
+		}
+		
 		Register[pos] = value;
 
 		if (PIC.Reg_Listener != null) {

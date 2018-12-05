@@ -6,9 +6,8 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseAdapter;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
@@ -19,7 +18,6 @@ import org.eclipse.swt.widgets.Text;
 import simulator.PIC;
 
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.Bullet;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -57,6 +55,9 @@ public class Main {
 	private Text textPc_Content;
 	private Text textW_Content;
 	private Text textRuntime_Content;
+	private Text textCarry_Content;
+	private Text textDC_Content;
+	private Text textZero_Content;
 	private MenuItem mntmRun;
 	private MenuItem mntmStep;
 	private MenuItem mntmReset;
@@ -223,72 +224,20 @@ public class Main {
 
 		new MenuItem(menu_2, SWT.SEPARATOR);
 
-		Listener runListener = (e) -> {
-			SetRunning(!Running);
-
-			if (Running) {
-				new Thread(() -> {
-					long n = System.currentTimeMillis();
-					while (PIC.Step() != -1) {
-						if (!Running || Reset_Requested) {
-							break;
-						}
-					}
-
-					System.out.println(System.currentTimeMillis() - n);
-
-					shell.getDisplay().syncExec(() -> SetRunning(false));
-
-					if (Reset_Requested) {
-						PIC.Reset();
-						Reset_Requested = false;
-					}
-				}).start();
-			}
-		};
-
-		Listener stepListener = (e) -> {
-			new Thread(() -> {
-				int step = PIC.Step();
-
-				if (step == 1) {
-					Sleeping = true;
-
-					while (PIC.Step() == 1) {
-						if (Reset_Requested) {
-							PIC.Reset();
-							Reset_Requested = false;
-							break;
-						}
-					}
-
-					Sleeping = false;
-				}
-			}).start();
-		};
-
-		Listener resetListener = (e) -> {
-			if (Running || Sleeping) {
-				Reset_Requested = true;
-			} else {
-				PIC.Reset();
-			}
-		};
-
 		mntmRun = new MenuItem(menu_2, SWT.NONE);
-		mntmRun.addListener(SWT.Selection, runListener);
+		mntmRun.addListener(SWT.Selection, (e) -> runClick());
 		mntmRun.setText("Run");
 		mntmRun.setEnabled(false);
 
 		mntmStep = new MenuItem(menu_2, SWT.NONE);
-		mntmStep.addListener(SWT.Selection, stepListener);
+		mntmStep.addListener(SWT.Selection, (e) -> stepClick());
 		mntmStep.setText("Step");
 		mntmStep.setEnabled(false);
 
 		new MenuItem(menu_2, SWT.SEPARATOR);
 
 		mntmReset = new MenuItem(menu_2, SWT.NONE);
-		mntmReset.addListener(SWT.Selection, resetListener);
+		mntmReset.addListener(SWT.Selection, (e) -> resetClick());
 		mntmReset.setText("Reset");
 		mntmReset.setEnabled(false);
 
@@ -315,17 +264,17 @@ public class Main {
 		toolBar.setBounds(10, 0, rect.width, 33);
 
 		tltmRun = new ToolItem(toolBar, SWT.NONE);
-		tltmRun.addListener(SWT.Selection, runListener);
+		tltmRun.addListener(SWT.Selection, (e) -> runClick());
 		tltmRun.setText("Run");
 		tltmRun.setEnabled(false);
 
 		tltmStep = new ToolItem(toolBar, SWT.NONE);
-		tltmStep.addListener(SWT.Selection, stepListener);
+		tltmStep.addListener(SWT.Selection, (e) -> stepClick());
 		tltmStep.setText("Step");
 		tltmStep.setEnabled(false);
 
 		tltmReset = new ToolItem(toolBar, SWT.NONE);
-		tltmReset.addListener(SWT.Selection, resetListener);
+		tltmReset.addListener(SWT.Selection, (e) -> resetClick());
 		tltmReset.setText("Reset");
 		tltmReset.setEnabled(false);
 
@@ -358,24 +307,21 @@ public class Main {
 			SetRunning(false);
 			SetParsed(false);
 		});
-
-		text.addMouseListener(new MouseAdapter() {
-			public void mouseUp(MouseEvent e) {
-				if (e.x > 25) {
-					return;
-				}
-
-				int line = text.getLineAtOffset(text.getCaretOffset());
-				String lineString = text.getLine(line);
-
-				if (lineString.length() == 0 || lineString.charAt(0) == 32) {
-					return;
-				}
-
-				boolean empty = text.getLineBullet(line).style.foreground.getAlpha() == 0;
-				text.setLineBullet(line, 1, null);
-				text.setLineBullet(line, 1, empty ? bullet_point : bullet_empty);
+		text.addListener(SWT.MouseUp, (e) -> {
+			if (e.x > 25) {
+				return;
 			}
+
+			int line = text.getLineAtOffset(text.getCaretOffset());
+			String lineString = text.getLine(line);
+
+			if (lineString.length() == 0 || lineString.charAt(0) == 32) {
+				return;
+			}
+
+			boolean empty = text.getLineBullet(line).style.foreground.getAlpha() == 0;
+			text.setLineBullet(line, 1, null);
+			text.setLineBullet(line, 1, empty ? bullet_point : bullet_empty);
 		});
 
 		Group grpSpecialFunctionRegisters = new Group(shell, SWT.NONE);
@@ -423,7 +369,7 @@ public class Main {
 			text_2.setText("00");
 		}
 
-		for (int i = 0x0C; i < 0x2F; i++) {
+		for (int i = 0x0C; i <= 0x2F; i++) {
 			Text text_1 = new Text(composite_gpr, SWT.BORDER | SWT.READ_ONLY);
 			GridData gd_text_1 = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
 			gd_text_1.widthHint = 180;
@@ -441,27 +387,52 @@ public class Main {
 		scrolledComposite_1.setContent(composite_gpr);
 		scrolledComposite_1.setMinSize(composite_gpr.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 
-		Text txtPc = new Text(shell, SWT.BORDER | SWT.READ_ONLY);
-		txtPc.setText("PC");
-		txtPc.setBounds(10, (int) (rect.width * 0.3769) + 58, 120, 35);
+		Group grpStatus = new Group(shell, SWT.NONE);
+		grpStatus.setText("Status");
+		grpStatus.setBounds(10, (int) (rect.width * 0.3769) + 58, 446, 165);
 
-		Text txtWRegister = new Text(shell, SWT.BORDER | SWT.READ_ONLY);
-		txtWRegister.setText("W Register");
-		txtWRegister.setBounds(10, (int) (rect.width * 0.3769) + 99, 120, 35);
+		Text textPc = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
+		textPc.setBounds(10, 38, 120, 35);
+		textPc.setText("PC");
 
-		Text txtRuntime = new Text(shell, SWT.BORDER | SWT.READ_ONLY);
-		txtRuntime.setText("Runtime");
-		txtRuntime.setBounds(10, (int) (rect.width * 0.3769) + 140, 120, 35);
+		textPc_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
+		textPc_Content.setBounds(136, 38, 106, 35);
 
-		textPc_Content = new Text(shell, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textPc_Content.setBounds(136, (int) (rect.width * 0.3769) + 58, 106, 35);
+		Text textWRegister = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
+		textWRegister.setText("W Register");
+		textWRegister.setBounds(10, 79, 120, 35);
 
-		textW_Content = new Text(shell, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textW_Content.setBounds(136, (int) (rect.width * 0.3769) + 99, 106, 35);
+		textW_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
+		textW_Content.setBounds(136, 79, 106, 35);
 
-		textRuntime_Content = new Text(shell, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textRuntime_Content.setBounds(136, (int) (rect.width * 0.3769) + 140, 106, 35);
+		Text textRuntime = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
+		textRuntime.setText("Runtime");
+		textRuntime.setBounds(10, 120, 120, 35);
+
+		textRuntime_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
+		textRuntime_Content.setBounds(136, 120, 106, 35);
 		textRuntime_Content.setText("0");
+
+		Text textCarry = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
+		textCarry.setBounds(260, 38, 120, 35);
+		textCarry.setText("Carry Flag");
+
+		textCarry_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
+		textCarry_Content.setBounds(386, 38, 50, 35);
+
+		Text textDC = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
+		textDC.setBounds(260, 79, 120, 35);
+		textDC.setText("DC Flag");
+
+		textDC_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
+		textDC_Content.setBounds(386, 79, 50, 35);
+
+		Text textZero = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
+		textZero.setBounds(260, 120, 120, 35);
+		textZero.setText("Zero Flag");
+
+		textZero_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
+		textZero_Content.setBounds(386, 120, 50, 35);
 
 		for (int i = 0; i < 8; i++) {
 			final int _i = Integer.valueOf(i);
@@ -499,19 +470,15 @@ public class Main {
 			btnWde.setBackground(WDE ? shell.getDisplay().getSystemColor(SWT.COLOR_GREEN) : null);
 			PIC.SetWDE(WDE);
 		});
+		btnWde.notifyListeners(SWT.Selection, new Event());
 
 		Combo combo = new Combo(shell, SWT.READ_ONLY);
 		combo.setBounds(rect.width - 769, 834, 156, 33);
 		combo.setItems("4MHz Quartz", "1MHz Quartz");
 		combo.select(0);
 		combo.addListener(SWT.Selection, (e) -> PIC.SetQuartz(combo.getSelectionIndex() == 0 ? 4 : 1));
-		
-		Group grpStatus = new Group(shell, SWT.NONE);
-		grpStatus.setText("Status");
-		grpStatus.setBounds(498, 834, 70, 92);
 
 		PIC.Reset();
-
 	}
 
 	private void SetParsed(boolean parsed) {
@@ -584,6 +551,18 @@ public class Main {
 		textW_Content.setText(IntToString(val));
 	}
 
+	private void Reset_PIC() {
+		for (int i = 0; i <= 0x8B; i++) {
+			Register_Changed(i, 0);
+			
+			if(i == 0x2F) {
+				i = 0x80;
+			}
+		}
+
+		PIC.Reset();
+	}
+
 	private void PC_Changed(int pc) {
 		textPc_Content.setText(IntToString(pc));
 
@@ -644,19 +623,54 @@ public class Main {
 
 				if (address == 0x05 || address == 0x06) {
 					for (int i = 0; i < 8; i++) {
-						btns[i].setBackground((value & (1 << i)) == 0 ? null : green);
-						txts[i].setBackground((value & (1 << i)) == 0 ? null : green);
+						Color bg = (value & (1 << i)) == 0 ? null : green;
+
+						if (!btns[i].getBackground().equals(bg)) {
+							btns[i].setBackground(bg);
+						}
+
+						if (!txts[i].getBackground().equals(bg)) {
+							txts[i].setBackground(bg);
+						}
+
 					}
 				} else {
 					for (int i = 0; i < 8; i++) {
-						btns[i].setVisible((value & (1 << i)) != 0);
-						txts[i].setVisible((value & (1 << i)) == 0);
+						boolean input = (value & (1 << i)) == 0;
+
+						if (btns[i].getVisible() == input) {
+							btns[i].setVisible(!input);
+						}
+
+						if (txts[i].getVisible() != input) {
+							txts[i].setVisible(input);
+						}
 					}
+				}
+			} else if (address == 0x03) {
+				String c_str = (value & 0x01) == 0x01 ? "1" : "0";
+				String dc_str = (value & 0x02) == 0x02 ? "1" : "0";
+				String z_str = (value & 0x04) == 0x04 ? "1" : "0";
+
+				if (!textCarry_Content.getText().equals(c_str)) {
+					textCarry_Content.setText(c_str);
+				}
+
+				if (!textDC_Content.getText().equals(dc_str)) {
+					textDC_Content.setText(dc_str);
+				}
+
+				if (!textZero_Content.getText().equals(z_str)) {
+					textZero_Content.setText(z_str);
 				}
 			}
 		}
 
-		hex_text.setText(IntToString(value));
+		String str = IntToString(value);
+
+		if (hex_text.getText() != str) {
+			hex_text.setText(str);
+		}
 	}
 
 	private void SaveFile(boolean searchPath) throws IOException {
@@ -675,6 +689,58 @@ public class Main {
 		Files.write(filePath, text.getText().getBytes(StandardCharsets.UTF_8));
 		shell.setText("PIC Simulator - " + filePath.getFileName());
 		Modified = false;
+	}
+
+	private void runClick() {
+		SetRunning(!Running);
+
+		if (Running) {
+			new Thread(() -> {
+				long n = System.currentTimeMillis();
+				while (PIC.Step() != -1) {
+					if (!Running || Reset_Requested) {
+						break;
+					}
+				}
+
+				System.out.println(System.currentTimeMillis() - n);
+
+				shell.getDisplay().syncExec(() -> SetRunning(false));
+
+				if (Reset_Requested) {
+					shell.getDisplay().syncExec(() -> Reset_PIC());
+					Reset_Requested = false;
+				}
+			}).start();
+		}
+	}
+
+	private void stepClick() {
+		new Thread(() -> {
+			int step = PIC.Step();
+
+			if (step == 1) {
+				Sleeping = true;
+
+				while (PIC.Step() == 1) {
+					if (Reset_Requested) {
+						shell.getDisplay().syncExec(() -> Reset_PIC());
+						Reset_Requested = false;
+						break;
+					}
+				}
+
+				Sleeping = false;
+			}
+		}).start();
+	}
+
+	private void resetClick() {
+		if (Running || Sleeping) {
+			Reset_Requested = true;
+		} else {
+			Reset_PIC();
+		}
 	}
 
 	private String IntToString(int val) {
