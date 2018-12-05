@@ -48,6 +48,7 @@ public class Main {
 	private boolean Reset_Requested;
 	private boolean Modified;
 	private boolean Values_Binary;
+	private boolean Display_EEPROM;
 	private int Displayed_Lines;
 	private boolean WDE;
 	private Path filePath;
@@ -66,6 +67,10 @@ public class Main {
 	private ToolItem tltmReset;
 	private Composite composite_sfr;
 	private Composite composite_gpr;
+	private Composite composite_eeprom;
+	private Group grp_gpr;
+	private Group grp_eeprom;
+	private ScrolledComposite scrolledComposite_gpr;
 	private Button[] btns_RA;
 	private Button[] btns_RB;
 	private Text[] texts_RA;
@@ -96,6 +101,7 @@ public class Main {
 		PIC.SetWListener((w) -> shell.getDisplay().syncExec(() -> W_Changed(w)));
 		PIC.SetRuntimeListener((runtime) -> shell.getDisplay().syncExec(() -> Runtime_Changed(runtime)));
 		PIC.SetRegListener((address, value) -> shell.getDisplay().syncExec(() -> Register_Changed(address, value)));
+		PIC.SetEEPROMListener((address, value) -> shell.getDisplay().syncExec(() -> EEPROM_Changed(address, value)));
 
 		Display display = Display.getDefault();
 		createContents();
@@ -133,10 +139,10 @@ public class Main {
 		MenuItem mntmFile = new MenuItem(menu, SWT.CASCADE);
 		mntmFile.setText("File");
 
-		Menu menu_1 = new Menu(mntmFile);
-		mntmFile.setMenu(menu_1);
+		Menu menu_file = new Menu(mntmFile);
+		mntmFile.setMenu(menu_file);
 
-		MenuItem mntmNew = new MenuItem(menu_1, SWT.NONE);
+		MenuItem mntmNew = new MenuItem(menu_file, SWT.NONE);
 		mntmNew.setText("New");
 		mntmNew.addListener(SWT.Selection, (e) -> {
 			if (Modified) {
@@ -159,7 +165,7 @@ public class Main {
 			shell.setText("PIC Simulator - Unbenannt");
 		});
 
-		MenuItem mntmOpen = new MenuItem(menu_1, SWT.NONE);
+		MenuItem mntmOpen = new MenuItem(menu_file, SWT.NONE);
 		mntmOpen.setText("Open...");
 		mntmOpen.addListener(SWT.Selection, (e) -> {
 			FileDialog fd = new FileDialog(shell, SWT.OPEN);
@@ -182,7 +188,7 @@ public class Main {
 			}
 		});
 
-		MenuItem mntmSave = new MenuItem(menu_1, SWT.NONE);
+		MenuItem mntmSave = new MenuItem(menu_file, SWT.NONE);
 		mntmSave.setText("Save");
 		mntmSave.addListener(SWT.Selection, (e) -> {
 			try {
@@ -192,7 +198,7 @@ public class Main {
 			}
 		});
 
-		MenuItem mntmSaveAs = new MenuItem(menu_1, SWT.NONE);
+		MenuItem mntmSaveAs = new MenuItem(menu_file, SWT.NONE);
 		mntmSaveAs.setText("Save As...");
 		mntmSaveAs.addListener(SWT.Selection, (e) -> {
 			try {
@@ -202,19 +208,19 @@ public class Main {
 			}
 		});
 
-		new MenuItem(menu_1, SWT.SEPARATOR);
+		new MenuItem(menu_file, SWT.SEPARATOR);
 
-		MenuItem mntmExit = new MenuItem(menu_1, SWT.NONE);
+		MenuItem mntmExit = new MenuItem(menu_file, SWT.NONE);
 		mntmExit.addListener(SWT.Selection, (e) -> shell.close());
 		mntmExit.setText("Exit");
 
 		MenuItem mntmSimulator = new MenuItem(menu, SWT.CASCADE);
 		mntmSimulator.setText("Simulator");
 
-		Menu menu_2 = new Menu(mntmSimulator);
-		mntmSimulator.setMenu(menu_2);
+		Menu menu_simulator = new Menu(mntmSimulator);
+		mntmSimulator.setMenu(menu_simulator);
 
-		MenuItem mntmParse = new MenuItem(menu_2, SWT.NONE);
+		MenuItem mntmParse = new MenuItem(menu_simulator, SWT.NONE);
 		mntmParse.setText("Parse");
 		mntmParse.setEnabled(false);
 		mntmParse.addListener(SWT.Selection, (e) -> {
@@ -222,21 +228,21 @@ public class Main {
 			SetParsed(true);
 		});
 
-		new MenuItem(menu_2, SWT.SEPARATOR);
+		new MenuItem(menu_simulator, SWT.SEPARATOR);
 
-		mntmRun = new MenuItem(menu_2, SWT.NONE);
+		mntmRun = new MenuItem(menu_simulator, SWT.NONE);
 		mntmRun.addListener(SWT.Selection, (e) -> runClick());
 		mntmRun.setText("Run");
 		mntmRun.setEnabled(false);
 
-		mntmStep = new MenuItem(menu_2, SWT.NONE);
+		mntmStep = new MenuItem(menu_simulator, SWT.NONE);
 		mntmStep.addListener(SWT.Selection, (e) -> stepClick());
 		mntmStep.setText("Step");
 		mntmStep.setEnabled(false);
 
-		new MenuItem(menu_2, SWT.SEPARATOR);
+		new MenuItem(menu_simulator, SWT.SEPARATOR);
 
-		mntmReset = new MenuItem(menu_2, SWT.NONE);
+		mntmReset = new MenuItem(menu_simulator, SWT.NONE);
 		mntmReset.addListener(SWT.Selection, (e) -> resetClick());
 		mntmReset.setText("Reset");
 		mntmReset.setEnabled(false);
@@ -244,12 +250,16 @@ public class Main {
 		MenuItem mntmWindow = new MenuItem(menu, SWT.CASCADE);
 		mntmWindow.setText("Window");
 
-		Menu menu_3 = new Menu(mntmWindow);
-		mntmWindow.setMenu(menu_3);
+		Menu menu_window = new Menu(mntmWindow);
+		mntmWindow.setMenu(menu_window);
 
-		MenuItem mntmValuesBinary = new MenuItem(menu_3, SWT.CHECK);
+		MenuItem mntmValuesBinary = new MenuItem(menu_window, SWT.CHECK);
 		mntmValuesBinary.setText("Display Binary Values");
 		mntmValuesBinary.addListener(SWT.Selection, (e) -> SetValuesBinary(!Values_Binary));
+
+		MenuItem mntmDisplayEEPROM = new MenuItem(menu_window, SWT.CHECK);
+		mntmDisplayEEPROM.setText("Display EEPROM");
+		mntmDisplayEEPROM.addListener(SWT.Selection, (e) -> SetDisplayEEPROM(!Display_EEPROM));
 
 		MenuItem mntmHelp = new MenuItem(menu, SWT.CASCADE);
 		mntmHelp.setText("Help");
@@ -324,33 +334,46 @@ public class Main {
 			text.setLineBullet(line, 1, empty ? bullet_point : bullet_empty);
 		});
 
-		Group grpSpecialFunctionRegisters = new Group(shell, SWT.NONE);
-		grpSpecialFunctionRegisters.setText("Special Function Registers");
-		grpSpecialFunctionRegisters.setBounds(rect.width - 476, 45, 452, (int) (rect.height * 0.4173));
+		Group grp_sfr = new Group(shell, SWT.NONE);
+		grp_sfr.setText("Special Function Registers");
+		grp_sfr.setBounds(rect.width - 476, 45, 452, (int) (rect.height * 0.4173));
 
-		ScrolledComposite scrolledComposite = new ScrolledComposite(grpSpecialFunctionRegisters,
+		ScrolledComposite scrolledComposite_sfr = new ScrolledComposite(grp_sfr,
 				SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-		scrolledComposite.setBounds(10, 40, 432, (int) (rect.height * 0.4173) - 50);
-		scrolledComposite.setExpandHorizontal(true);
-		scrolledComposite.setExpandVertical(true);
+		scrolledComposite_sfr.setBounds(10, 40, 432, (int) (rect.height * 0.4173) - 50);
+		scrolledComposite_sfr.setExpandHorizontal(true);
+		scrolledComposite_sfr.setExpandVertical(true);
 
-		composite_sfr = new Composite(scrolledComposite, SWT.NONE);
+		composite_sfr = new Composite(scrolledComposite_sfr, SWT.NONE);
 		composite_sfr.setLayout(new GridLayout(2, false));
 
-		Group grpGeneralPurposeRegisters = new Group(shell, SWT.NONE);
-		grpGeneralPurposeRegisters.setText("General Purpose Registers");
-		grpGeneralPurposeRegisters.setBounds(rect.width - 476, (int) (rect.height * 0.4173) + 51, 452,
-				(int) (rect.height * 0.485));
+		grp_gpr = new Group(shell, SWT.NONE);
+		grp_gpr.setText("General Purpose Registers");
+		grp_gpr.setBounds(rect.width - 476, (int) (rect.height * 0.4173) + 51, 452, (int) (rect.height * 0.514));
 
-		ScrolledComposite scrolledComposite_1 = new ScrolledComposite(grpGeneralPurposeRegisters,
-				SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-		scrolledComposite_1.setExpandVertical(true);
-		scrolledComposite_1.setExpandHorizontal(true);
-		scrolledComposite_1.setBounds(10, 40, 432, (int) (rect.height * 0.485) - 50);
-		scrolledComposite_1.setMinSize(new Point(10, 10));
+		scrolledComposite_gpr = new ScrolledComposite(grp_gpr, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+		scrolledComposite_gpr.setExpandVertical(true);
+		scrolledComposite_gpr.setExpandHorizontal(true);
+		scrolledComposite_gpr.setBounds(10, 40, 432, (int) (rect.height * 0.514) - 50);
+		scrolledComposite_gpr.setMinSize(new Point(10, 10));
 
-		composite_gpr = new Composite(scrolledComposite_1, SWT.NONE);
+		composite_gpr = new Composite(scrolledComposite_gpr, SWT.NONE);
 		composite_gpr.setLayout(new GridLayout(2, false));
+
+		grp_eeprom = new Group(shell, SWT.NONE);
+		grp_eeprom.setText("EEPROM");
+		grp_eeprom.setBounds(rect.width - 476, (int) (rect.height * 0.6973) + 57, 452, (int) (rect.height * 0.23));
+		grp_eeprom.setVisible(false);
+
+		ScrolledComposite scrolledComposite_eeprom = new ScrolledComposite(grp_eeprom,
+				SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+		scrolledComposite_eeprom.setExpandVertical(true);
+		scrolledComposite_eeprom.setExpandHorizontal(true);
+		scrolledComposite_eeprom.setBounds(10, 40, 432, (int) (rect.height * 0.23) - 50);
+		scrolledComposite_eeprom.setMinSize(new Point(10, 10));
+
+		composite_eeprom = new Composite(scrolledComposite_eeprom, SWT.NONE);
+		composite_eeprom.setLayout(new GridLayout(2, false));
 
 		String[] SFRs = new String[] { "00h - Indirect addr.", "01h - TMR0", "02h - PCL", "03h - STATUS", "04h - FSR",
 				"05h - PORTA", "06h - PORTB", "07h - ", "08h - EEDATA", "09h - EEADR", "0Ah - PCLATH", "0Bh - INTCON",
@@ -381,11 +404,26 @@ public class Main {
 			text_2.setText("00");
 		}
 
-		scrolledComposite.setContent(composite_sfr);
-		scrolledComposite.setMinSize(composite_sfr.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		for (int i = 0; i <= 0x3F; i++) {
+			Text text_1 = new Text(composite_eeprom, SWT.BORDER | SWT.READ_ONLY);
+			GridData gd_text_1 = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
+			gd_text_1.widthHint = 180;
+			text_1.setLayoutData(gd_text_1);
+			text_1.setText(String.format("%02X", i));
 
-		scrolledComposite_1.setContent(composite_gpr);
-		scrolledComposite_1.setMinSize(composite_gpr.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+			Text text_2 = new Text(composite_eeprom, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
+			text_2.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+			text_2.setText("00");
+		}
+
+		scrolledComposite_sfr.setContent(composite_sfr);
+		scrolledComposite_sfr.setMinSize(composite_sfr.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+
+		scrolledComposite_gpr.setContent(composite_gpr);
+		scrolledComposite_gpr.setMinSize(composite_gpr.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+
+		scrolledComposite_eeprom.setContent(composite_eeprom);
+		scrolledComposite_eeprom.setMinSize(composite_eeprom.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 
 		Group grpStatus = new Group(shell, SWT.NONE);
 		grpStatus.setText("Status");
@@ -519,10 +557,6 @@ public class Main {
 	}
 
 	private void SetValuesBinary(boolean binary) {
-		if (Values_Binary == binary) {
-			return;
-		}
-
 		Values_Binary = binary;
 
 		Control[] texts = composite_sfr.getChildren();
@@ -551,16 +585,14 @@ public class Main {
 		textW_Content.setText(IntToString(val));
 	}
 
-	private void Reset_PIC() {
-		for (int i = 0; i <= 0x8B; i++) {
-			Register_Changed(i, 0);
-			
-			if(i == 0x2F) {
-				i = 0x80;
-			}
-		}
+	private void SetDisplayEEPROM(boolean display) {
+		Display_EEPROM = display;
 
-		PIC.Reset();
+		int gpr_height = (int) (shell.getClientArea().height * (display ? 0.28 : 0.514));
+
+		grp_gpr.setSize(452, gpr_height);
+		scrolledComposite_gpr.setSize(432, gpr_height - 50);
+		grp_eeprom.setVisible(display);
 	}
 
 	private void PC_Changed(int pc) {
@@ -672,6 +704,15 @@ public class Main {
 			hex_text.setText(str);
 		}
 	}
+	
+	private void EEPROM_Changed(int address, int value) {
+		Text hex_text = (Text)composite_eeprom.getChildren()[(address * 2) + 1];
+		String str = IntToString(value);
+		
+		if(hex_text.getText() != str) {
+			hex_text.setText(str);
+		}
+	}
 
 	private void SaveFile(boolean searchPath) throws IOException {
 		if (searchPath) {
@@ -697,6 +738,7 @@ public class Main {
 		if (Running) {
 			new Thread(() -> {
 				long n = System.currentTimeMillis();
+				
 				while (PIC.Step() != -1) {
 					if (!Running || Reset_Requested) {
 						break;
@@ -708,7 +750,7 @@ public class Main {
 				shell.getDisplay().syncExec(() -> SetRunning(false));
 
 				if (Reset_Requested) {
-					shell.getDisplay().syncExec(() -> Reset_PIC());
+					shell.getDisplay().syncExec(() -> PIC.Reset());
 					Reset_Requested = false;
 				}
 			}).start();
@@ -724,7 +766,7 @@ public class Main {
 
 				while (PIC.Step() == 1) {
 					if (Reset_Requested) {
-						shell.getDisplay().syncExec(() -> Reset_PIC());
+						shell.getDisplay().syncExec(() -> PIC.Reset());
 						Reset_Requested = false;
 						break;
 					}
@@ -739,7 +781,7 @@ public class Main {
 		if (Running || Sleeping) {
 			Reset_Requested = true;
 		} else {
-			Reset_PIC();
+			PIC.Reset();
 		}
 	}
 

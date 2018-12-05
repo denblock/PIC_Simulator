@@ -9,10 +9,7 @@ public class Register {
 		PIC = pic;
 
 		Register = new int[1024];
-		DirectWrite(0x03, 0x18);
-		DirectWrite(0x81, 0xff);
-		DirectWrite(0x85, 0x1f);
-		DirectWrite(0x86, 0xff);
+		Reset();
 	}
 
 	public int Read(int pos) {
@@ -33,7 +30,7 @@ public class Register {
 			PIC.CyclesLeft = GetPrescale();
 		} else if(address == 0x88 || address == 0x89) {
 			if(address == 0x88 && GetRD()) {
-				DirectWrite(0x08, PIC.EEPROM[Register[0x09]]);
+				DirectWrite(0x08, PIC.EEPROM.Read(Register[0x09]));
 				SetRD(false);
 			}
 			
@@ -42,7 +39,7 @@ public class Register {
 			}
 			
 			if(GetWR() && EEPROM_Write_Sequence) {
-				PIC.EEPROM[Register[0x09]] = Register[0x08];
+				PIC.EEPROM.Write(Register[0x09], Register[0x08]);
 				SetWR(false);
 				EEPROM_Write_Sequence = false;
 				SetEEIF(true);
@@ -51,12 +48,18 @@ public class Register {
 	}
 
 	public void Reset() {
-		DirectWrite(2, 0);
-		DirectWrite(3, Register[3] & 0x1f);
+		for (int i = 0; i <= 0x8B; i++) {
+			DirectWrite(i, 0);
+			
+			if(i == 0x2F) {
+				i = 0x80;
+			}
+		}
+		
+		DirectWrite(0x03, 0x18);
 		DirectWrite(0x81, 0xff);
 		DirectWrite(0x85, 0x1f);
 		DirectWrite(0x86, 0xff);
-		DirectWrite(0x88, 0);
 	}
 
 	private int GetAddress(int pos) {

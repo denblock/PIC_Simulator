@@ -7,8 +7,8 @@ import java.util.function.Consumer;
 public class PIC {
 	private int W;
 	private int[] Memory;
-	int[] EEPROM;
 	private Register Reg;
+	EEPROM EEPROM;
 	private Stack Stack;
 	private int Runtime;
 	int CyclesLeft;
@@ -20,17 +20,20 @@ public class PIC {
 	private Consumer<Integer> W_Listener;
 	private Consumer<Integer> Runtime_Listener;
 	BiConsumer<Integer, Integer> Reg_Listener;
+	BiConsumer<Integer, Integer> EEPROM_Listener;
 
 	private int[] LST_Offset;
 	
 	public PIC() {
+		Reg = new Register(this);
+		EEPROM = new EEPROM(this);
 		Reset();
 	}
 
 	public void Reset() {
 		SetW(0xFF);
-		EEPROM = new int[64];
-		Reg = new Register(this);
+		Reg.Reset();
+		EEPROM.Reset();
 		Stack = new Stack();
 		SetRuntime(0);
 		CyclesLeft = Reg.GetPrescale();
@@ -393,6 +396,10 @@ public class PIC {
 
 	public void SetRegListener(BiConsumer<Integer, Integer> f) {
 		Reg_Listener = f;
+	}
+	
+	public void SetEEPROMListener(BiConsumer<Integer, Integer> f) {
+		EEPROM_Listener = f;
 	}
 
 	private void SetW(int w) {
