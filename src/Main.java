@@ -68,13 +68,10 @@ public class Main {
 	private Composite composite_sfr;
 	private Composite composite_gpr;
 	private Composite composite_eeprom;
+	private ScrolledComposite scrolledComposite_gpr;
 	private Group grp_gpr;
 	private Group grp_eeprom;
-	private ScrolledComposite scrolledComposite_gpr;
-	private Button[] btns_RA;
-	private Button[] btns_RB;
-	private Text[] texts_RA;
-	private Text[] texts_RB;
+	private Group grp_ports;
 
 	/**
 	 * Launch the application.
@@ -127,11 +124,6 @@ public class Main {
 		shell.setText("PIC Simulator - Unbenannt");
 
 		rect = shell.getClientArea();
-
-		btns_RA = new Button[8];
-		btns_RB = new Button[8];
-		texts_RA = new Text[8];
-		texts_RB = new Text[8];
 
 		Menu menu = new Menu(shell, SWT.BAR);
 		shell.setMenuBar(menu);
@@ -472,37 +464,37 @@ public class Main {
 
 		textZero_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
 		textZero_Content.setBounds(386, 120, 50, 35);
-		
-		Group grpPorts = new Group(shell, SWT.NONE);
-		grpPorts.setBounds(10, (int)(rect.width * 0.4892), 902, 124);
-		grpPorts.setText("I/O Ports");
+
+		grp_ports = new Group(shell, SWT.NONE);
+		grp_ports.setBounds(10, (int) (rect.width * 0.4892), 902, 124);
+		grp_ports.setText("I/O Ports");
 
 		for (int i = 0; i < 8; i++) {
 			final int _i = Integer.valueOf(i);
 
-			btns_RA[i] = new Button(grpPorts, SWT.NONE);
-			btns_RA[i].setText("RA" + i);
-			btns_RA[i].setBounds(10 + i * 111, 38, 105, 35);
-			btns_RA[i].setEnabled(false);
-			btns_RA[i].addListener(SWT.Selection, (e) -> PIC.RA_Invoked(_i));
+			Button btn = new Button(grp_ports, SWT.NONE);
+			btn.setText("RA" + i);
+			btn.setBounds(10 + i * 111, 38, 105, 35);
+			btn.setEnabled(false);
+			btn.addListener(SWT.Selection, (e) -> PIC.RA_Invoked(_i));
+
+			Text text_p = new Text(grp_ports, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
+			text_p.setText("RA" + i);
+			text_p.setBounds(10 + i * 111, 38, 105, 35);
+			text_p.setEnabled(false);
+			text_p.setVisible(false);
+
+			btn = new Button(grp_ports, SWT.NONE);
+			btn.setText("RB" + i);
+			btn.setBounds(10 + i * 111, 79, 105, 35);
+			btn.setEnabled(false);
+			btn.addListener(SWT.Selection, (e) -> PIC.RB_Invoked(_i));
 			
-			texts_RA[i] = new Text(grpPorts, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
-			texts_RA[i].setText("RA" + i);
-			texts_RA[i].setBounds(10 + i * 111, 38, 105, 35);
-			texts_RA[i].setEnabled(false);
-			texts_RA[i].setVisible(false);
-
-			btns_RB[i] = new Button(grpPorts, SWT.NONE);
-			btns_RB[i].setText("RB" + i);
-			btns_RB[i].setBounds(10 + i * 111, 79, 105, 35);
-			btns_RB[i].setEnabled(false);
-			btns_RB[i].addListener(SWT.Selection, (e) -> PIC.RB_Invoked(_i));
-
-			texts_RB[i] = new Text(grpPorts, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
-			texts_RB[i].setText("RB" + i);
-			texts_RB[i].setBounds(10 + i * 111, 79, 105, 35);
-			texts_RB[i].setEnabled(false);
-			texts_RB[i].setVisible(false);
+			text_p = new Text(grp_ports, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
+			text_p.setText("RB" + i);
+			text_p.setBounds(10 + i * 111, 79, 105, 35);
+			text_p.setEnabled(false);
+			text_p.setVisible(false);
 		}
 
 		Button btnWde = new Button(shell, SWT.NONE);
@@ -536,11 +528,10 @@ public class Main {
 		tltmStep.setEnabled(parsed);
 		tltmReset.setEnabled(parsed);
 
-		for (int i = 0; i < 8; i++) {
-			btns_RA[i].setEnabled(parsed);
-			btns_RB[i].setEnabled(parsed);
-			texts_RA[i].setEnabled(parsed);
-			texts_RB[i].setEnabled(parsed);
+		Control[] ports = grp_ports.getChildren();
+
+		for (int i = 0; i < ports.length; i++) {
+			ports[i].setEnabled(parsed);
 		}
 
 		Parsed = parsed;
@@ -652,36 +643,33 @@ public class Main {
 			}
 
 			if (address == 0x05 || address == 0x06 || address == 0x85 || address == 0x86) {
-				boolean portA = (address & 0x05) == 0x05;
-
-				Button[] btns = portA ? btns_RA : btns_RB;
-				Text[] txts = portA ? texts_RA : texts_RB;
+				int offset = (address & 0x05) == 0x05 ? 0 : 2;
+				Control[] ports = grp_ports.getChildren();
 
 				if (address == 0x05 || address == 0x06) {
 					Color green = shell.getDisplay().getSystemColor(SWT.COLOR_GREEN);
-					
+
 					for (int i = 0; i < 8; i++) {
 						Color bg = (value & (1 << i)) == 0 ? null : green;
 
-						if (!btns[i].getBackground().equals(bg)) {
-							btns[i].setBackground(bg);
+						if (!ports[i * 4 + offset].getBackground().equals(bg)) {
+							ports[i * 4 + offset].setBackground(bg);
 						}
 
-						if (!txts[i].getBackground().equals(bg)) {
-							txts[i].setBackground(bg);
+						if (!ports[i * 4 + offset + 1].getBackground().equals(bg)) {
+							ports[i * 4 + offset + 1].setBackground(bg);
 						}
-
 					}
 				} else {
 					for (int i = 0; i < 8; i++) {
-						boolean input = (value & (1 << i)) == 0;
+						boolean output = (value & (1 << i)) == 0;
 
-						if (btns[i].getVisible() == input) {
-							btns[i].setVisible(!input);
+						if (ports[i * 4 + offset].getVisible() == output) {
+							ports[i * 4 + offset].setVisible(!output);
 						}
 
-						if (txts[i].getVisible() != input) {
-							txts[i].setVisible(input);
+						if (ports[i * 4 + offset + 1].getVisible() != output) {
+							ports[i * 4 + offset + 1].setVisible(output);
 						}
 					}
 				}
