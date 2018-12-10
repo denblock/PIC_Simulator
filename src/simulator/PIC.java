@@ -23,7 +23,7 @@ public class PIC {
 	BiConsumer<Integer, Integer> EEPROM_Listener;
 
 	private int[] LST_Offset;
-	
+
 	public PIC() {
 		Reg = new Register(this);
 		EEPROM = new EEPROM(this);
@@ -213,8 +213,8 @@ public class PIC {
 				}
 			}
 		}
-		
-		if(incrementPC) {
+
+		if (incrementPC) {
 			SetPC(PC + instCycles);
 		}
 
@@ -390,7 +390,7 @@ public class PIC {
 	public void SetRegListener(BiConsumer<Integer, Integer> f) {
 		Reg_Listener = f;
 	}
-	
+
 	public void SetEEPROMListener(BiConsumer<Integer, Integer> f) {
 		EEPROM_Listener = f;
 	}
@@ -406,16 +406,16 @@ public class PIC {
 			W_Listener.accept(w);
 		}
 	}
-	
+
 	void SetPC(int pc) {
-		if(PC == pc) {
+		if (PC == pc) {
 			return;
 		}
-		
+
 		PC = pc;
 		Reg.DirectWrite(0x02, pc & 0xFF);
-		//DirectWrite(0x0A, (pc >> 8) & 0x1F);
-		
+		// DirectWrite(0x0A, (pc >> 8) & 0x1F);
+
 		if (PC_Listener != null) {
 			PC_Listener.accept(pc);
 		}

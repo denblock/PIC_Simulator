@@ -15,7 +15,7 @@ public class EEPROM {
 		}
 
 		Data[address] = value;
-		
+
 		if (PIC.EEPROM_Listener != null) {
 			PIC.EEPROM_Listener.accept(address, value);
 		}
@@ -24,9 +24,9 @@ public class EEPROM {
 	public int Read(int address) {
 		return Data[address];
 	}
-	
+
 	public void Reset() {
-		for(int i= 0; i < 64; i++) {
+		for (int i = 0; i < 64; i++) {
 			Write(i, 0);
 		}
 	}

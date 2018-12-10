@@ -18,7 +18,7 @@ public class Stack {
 		if (Stack_Pointer > 0) {
 			Stack_Pointer--;
 		}
-		
+
 		return Stack[Stack_Pointer];
 	}
 }

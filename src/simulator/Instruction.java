@@ -214,7 +214,7 @@ public class Instruction {
 	public int[] GetArgs() {
 		return Args;
 	}
-	
+
 	public int GetCycles() {
 		return Cycles;
 	}

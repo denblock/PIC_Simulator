@@ -304,7 +304,7 @@ public class Main {
 				}
 			}
 
-			//text.redraw();
+			// text.redraw();
 
 			mntmParse.setEnabled(text.getText().length() != 0);
 			Modified = true;
@@ -493,7 +493,7 @@ public class Main {
 			btn.setBounds(10 + i * 111, 79, 105, 35);
 			btn.setEnabled(false);
 			btn.addListener(SWT.Selection, (e) -> PIC.RB_Invoked(_i));
-			
+
 			text_p = new Text(grp_ports, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
 			text_p.setText("RB" + i);
 			text_p.setBounds(10 + i * 111, 79, 105, 35);
@@ -519,7 +519,7 @@ public class Main {
 
 		PIC.Reset();
 	}
-	
+
 	private void RunClick() {
 		SetRunning(!Running);
 
