@@ -59,6 +59,7 @@ public class Main {
 	private Text textCarry_Content;
 	private Text textDC_Content;
 	private Text textZero_Content;
+	private MenuItem mntmParse;
 	private MenuItem mntmRun;
 	private MenuItem mntmStep;
 	private MenuItem mntmReset;
@@ -155,6 +156,7 @@ public class Main {
 			filePath = null;
 			text.setText("");
 			shell.setText("PIC Simulator - Unbenannt");
+			Modified = false;
 		});
 
 		MenuItem mntmOpen = new MenuItem(menu_file, SWT.NONE);
@@ -212,30 +214,31 @@ public class Main {
 		Menu menu_simulator = new Menu(mntmSimulator);
 		mntmSimulator.setMenu(menu_simulator);
 
-		MenuItem mntmParse = new MenuItem(menu_simulator, SWT.NONE);
+		mntmParse = new MenuItem(menu_simulator, SWT.NONE);
 		mntmParse.setText("Parse");
 		mntmParse.setEnabled(false);
 		mntmParse.addListener(SWT.Selection, (e) -> {
 			PIC.ParseLST(text.getText());
+			PC_Changed(0);
 			SetParsed(true);
 		});
 
 		new MenuItem(menu_simulator, SWT.SEPARATOR);
 
 		mntmRun = new MenuItem(menu_simulator, SWT.NONE);
-		mntmRun.addListener(SWT.Selection, (e) -> runClick());
+		mntmRun.addListener(SWT.Selection, (e) -> RunClick());
 		mntmRun.setText("Run");
 		mntmRun.setEnabled(false);
 
 		mntmStep = new MenuItem(menu_simulator, SWT.NONE);
-		mntmStep.addListener(SWT.Selection, (e) -> stepClick());
+		mntmStep.addListener(SWT.Selection, (e) -> StepClick());
 		mntmStep.setText("Step");
 		mntmStep.setEnabled(false);
 
 		new MenuItem(menu_simulator, SWT.SEPARATOR);
 
 		mntmReset = new MenuItem(menu_simulator, SWT.NONE);
-		mntmReset.addListener(SWT.Selection, (e) -> resetClick());
+		mntmReset.addListener(SWT.Selection, (e) -> ResetClick());
 		mntmReset.setText("Reset");
 		mntmReset.setEnabled(false);
 
@@ -266,17 +269,17 @@ public class Main {
 		toolBar.setBounds(10, 0, rect.width, 33);
 
 		tltmRun = new ToolItem(toolBar, SWT.NONE);
-		tltmRun.addListener(SWT.Selection, (e) -> runClick());
+		tltmRun.addListener(SWT.Selection, (e) -> RunClick());
 		tltmRun.setText("Run");
 		tltmRun.setEnabled(false);
 
 		tltmStep = new ToolItem(toolBar, SWT.NONE);
-		tltmStep.addListener(SWT.Selection, (e) -> stepClick());
+		tltmStep.addListener(SWT.Selection, (e) -> StepClick());
 		tltmStep.setText("Step");
 		tltmStep.setEnabled(false);
 
 		tltmReset = new ToolItem(toolBar, SWT.NONE);
-		tltmReset.addListener(SWT.Selection, (e) -> resetClick());
+		tltmReset.addListener(SWT.Selection, (e) -> ResetClick());
 		tltmReset.setText("Reset");
 		tltmReset.setEnabled(false);
 
@@ -301,7 +304,7 @@ public class Main {
 				}
 			}
 
-			text.redraw();
+			//text.redraw();
 
 			mntmParse.setEnabled(text.getText().length() != 0);
 			Modified = true;
@@ -427,6 +430,7 @@ public class Main {
 
 		textPc_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
 		textPc_Content.setBounds(136, 38, 106, 35);
+		textPc_Content.setText("00");
 
 		Text textWRegister = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
 		textWRegister.setText("W Register");
@@ -515,12 +519,66 @@ public class Main {
 
 		PIC.Reset();
 	}
+	
+	private void RunClick() {
+		SetRunning(!Running);
+
+		if (Running) {
+			new Thread(() -> {
+				long n = System.currentTimeMillis();
+
+				while (PIC.Step() != -1) {
+					if (!Running || Reset_Requested) {
+						break;
+					}
+				}
+
+				System.out.println(System.currentTimeMillis() - n);
+
+				shell.getDisplay().syncExec(() -> SetRunning(false));
+
+				if (Reset_Requested) {
+					shell.getDisplay().syncExec(() -> PIC.Reset());
+					Reset_Requested = false;
+				}
+			}).start();
+		}
+	}
+
+	private void StepClick() {
+		new Thread(() -> {
+			int step = PIC.Step();
+
+			if (step == 1) {
+				Sleeping = true;
+
+				while (PIC.Step() == 1) {
+					if (Reset_Requested) {
+						shell.getDisplay().syncExec(() -> PIC.Reset());
+						Reset_Requested = false;
+						break;
+					}
+				}
+
+				Sleeping = false;
+			}
+		}).start();
+	}
+
+	private void ResetClick() {
+		if (Running || Sleeping) {
+			Reset_Requested = true;
+		} else {
+			PIC.Reset();
+		}
+	}
 
 	private void SetParsed(boolean parsed) {
 		if (Parsed == parsed) {
 			return;
 		}
 
+		mntmParse.setEnabled(!parsed);
 		mntmRun.setEnabled(parsed);
 		mntmStep.setEnabled(parsed);
 		mntmReset.setEnabled(parsed);
@@ -596,7 +654,7 @@ public class Main {
 
 		int line = PIC.GetLSTOffset(pc);
 
-		if (line == -1) {
+		if (line == -1 || !Parsed) {
 			return;
 		}
 
@@ -610,7 +668,7 @@ public class Main {
 			SetRunning(false);
 			text.setLineBackground(line, 1, shell.getDisplay().getSystemColor(SWT.COLOR_YELLOW));
 		} else {
-			text.setLineBackground(line, 1, shell.getDisplay().getSystemColor(SWT.COLOR_GREEN));
+			text.setLineBackground(line, 1, shell.getDisplay().getSystemColor(SWT.COLOR_GRAY));
 		}
 
 		int idx = line - text.getTopIndex();
@@ -724,59 +782,6 @@ public class Main {
 		Files.write(filePath, text.getText().getBytes(StandardCharsets.UTF_8));
 		shell.setText("PIC Simulator - " + filePath.getFileName());
 		Modified = false;
-	}
-
-	private void runClick() {
-		SetRunning(!Running);
-
-		if (Running) {
-			new Thread(() -> {
-				long n = System.currentTimeMillis();
-
-				while (PIC.Step() != -1) {
-					if (!Running || Reset_Requested) {
-						break;
-					}
-				}
-
-				System.out.println(System.currentTimeMillis() - n);
-
-				shell.getDisplay().syncExec(() -> SetRunning(false));
-
-				if (Reset_Requested) {
-					shell.getDisplay().syncExec(() -> PIC.Reset());
-					Reset_Requested = false;
-				}
-			}).start();
-		}
-	}
-
-	private void stepClick() {
-		new Thread(() -> {
-			int step = PIC.Step();
-
-			if (step == 1) {
-				Sleeping = true;
-
-				while (PIC.Step() == 1) {
-					if (Reset_Requested) {
-						shell.getDisplay().syncExec(() -> PIC.Reset());
-						Reset_Requested = false;
-						break;
-					}
-				}
-
-				Sleeping = false;
-			}
-		}).start();
-	}
-
-	private void resetClick() {
-		if (Running || Sleeping) {
-			Reset_Requested = true;
-		} else {
-			PIC.Reset();
-		}
 	}
 
 	private String IntToString(int val) {

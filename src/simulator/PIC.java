@@ -37,21 +37,13 @@ public class PIC {
 		Stack = new Stack();
 		SetRuntime(0);
 		CyclesLeft = Reg.GetPrescale();
-		PC = 0;
-
-		if (PC_Listener != null) {
-			PC_Listener.accept(0);
-		}
+		SetPC(0);
 	}
 
 	public void ParseLST(String lst) {
 		LST_Offset = new int[1024];
 		Memory = new int[1024];
 		Arrays.fill(Memory, 0xFFFF);
-		PC = 0;
-		Ende = 0;
-		SetW(0xFF);
-
 		String[] data = lst.split(System.lineSeparator());
 
 		for (int i = 0; i < data.length; i++) {
@@ -70,9 +62,7 @@ public class PIC {
 			LST_Offset[address] = i;
 		}
 
-		if (PC_Listener != null) {
-			PC_Listener.accept(0);
-		}
+		Reset();
 	}
 
 	public void Run() {
@@ -89,13 +79,13 @@ public class PIC {
 		}
 
 		Instruction instruction;
+		boolean incrementPC = true;
 
 		if (!Reg.GetPD() || Reg.GetTO()) {
 			instruction = new Instruction(Memory[PC]);
-
-			PC++;
 		} else {
 			instruction = new Instruction(0);
+			incrementPC = false;
 		}
 
 		String instName = instruction.GetName();
@@ -135,7 +125,6 @@ public class PIC {
 
 			if ((instName == "decfsz" || instName == "incfsz") && result == 0) {
 				instCycles++;
-				PC++;
 			}
 			break;
 		case "bcf":
@@ -148,7 +137,6 @@ public class PIC {
 
 			if ((instName == "btfsc" && bit == 0) || (instName == "btfss" && bit != 0)) {
 				instCycles++;
-				PC++;
 			}
 			break;
 		case "clrw":
@@ -163,22 +151,27 @@ public class PIC {
 			Reg.Write(instArgs[0], W);
 			break;
 		case "goto":
-			PC = instArgs[0];
+			SetPC(instArgs[0] | ((Reg.Read(0x0A) & 0x18) << 8));
+			incrementPC = false;
 			break;
 		case "call":
-			Stack.Push(PC);
-			PC = instArgs[0];
+			Stack.Push(PC + 1);
+			SetPC(instArgs[0] | ((Reg.Read(0x0A) & 0x18) << 8));
+			incrementPC = false;
 			break;
 		case "return":
-			PC = Stack.Pop();
+			SetPC(Stack.Pop());
+			incrementPC = false;
 			break;
 		case "retlw":
 			SetW(instArgs[0]);
-			PC = Stack.Pop();
+			SetPC(Stack.Pop());
+			incrementPC = false;
 			break;
 		case "retfie":
 			Reg.SetGIE(true);
-			PC = Stack.Pop();
+			SetPC(Stack.Pop());
+			incrementPC = false;
 			break;
 		case "sleep":
 			Reg.SetPD(true);
@@ -220,9 +213,9 @@ public class PIC {
 				}
 			}
 		}
-
-		if ((!Reg.GetPD() || Reg.GetTO()) && PC_Listener != null) {
-			PC_Listener.accept(PC);
+		
+		if(incrementPC) {
+			SetPC(PC + instCycles);
 		}
 
 		return Reg.GetPD() && !Reg.GetTO() ? 1 : 0;
@@ -362,7 +355,7 @@ public class PIC {
 		if (Reg.GetGIE()) {
 			Reg.SetGIE(false);
 			Stack.Push(PC);
-			PC = 4;
+			SetPC(4);
 		}
 	}
 
@@ -411,6 +404,20 @@ public class PIC {
 
 		if (W_Listener != null) {
 			W_Listener.accept(w);
+		}
+	}
+	
+	void SetPC(int pc) {
+		if(PC == pc) {
+			return;
+		}
+		
+		PC = pc;
+		Reg.DirectWrite(0x02, pc & 0xFF);
+		//DirectWrite(0x0A, (pc >> 8) & 0x1F);
+		
+		if (PC_Listener != null) {
+			PC_Listener.accept(pc);
 		}
 	}
 

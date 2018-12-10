@@ -44,6 +44,8 @@ public class Register {
 				EEPROM_Write_Sequence = false;
 				SetEEIF(true);
 			}
+		} else if (address == 0x02) {
+			PIC.SetPC(Register[0x02] | ((Register[0x0A] & 0x1F) << 8));
 		}
 	}
 
@@ -283,7 +285,7 @@ public class Register {
 		return (Register[address] & b) == b;
 	}
 
-	private void DirectWrite(int pos, int value) {
+	void DirectWrite(int pos, int value) {
 		if(Register[pos] == value) {
 			return;
 		}
