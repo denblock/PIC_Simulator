@@ -1,22 +1,22 @@
 package simulator;
 
-public class Register {
+class Register {
 	private int[] Register;
 	private PIC PIC;
 	private boolean EEPROM_Write_Sequence;
 
-	public Register(PIC pic) {
+	Register(PIC pic) {
 		PIC = pic;
 
 		Register = new int[1024];
 		Reset();
 	}
 
-	public int Read(int pos) {
+	int Read(int pos) {
 		return Register[GetAddress(pos)];
 	}
 
-	public void Write(int pos, int value) {
+	void Write(int pos, int value) {
 		int address = GetAddress(pos);
 		int oldValue = Register[address];
 
@@ -49,7 +49,7 @@ public class Register {
 		}
 	}
 
-	public void Reset() {
+	void Reset() {
 		for (int i = 0x0C; i <= 0x2F; i++) {
 			DirectWrite(i, 0);
 		}
@@ -82,55 +82,47 @@ public class Register {
 		return idx;
 	}
 
-	public boolean GetC() {
+	boolean GetC() {
 		return GetBit(0x03, 0);
 	}
 
-	public void SetC(boolean c) {
+	void SetC(boolean c) {
 		SetBit(0x03, 0, c);
 	}
 
-	public boolean GetDC() {
-		return GetBit(0x03, 1);
-	}
-
-	public void SetDC(boolean dc) {
+	void SetDC(boolean dc) {
 		SetBit(0x03, 1, dc);
 	}
 
-	public boolean GetZ() {
-		return GetBit(0x03, 2);
-	}
-
-	public void SetZ(boolean z) {
+	void SetZ(boolean z) {
 		SetBit(0x03, 2, z);
 	}
 
-	public int GetBank() {
+	int GetBank() {
 		return (Register[3] & 0x60) >> 5;
 	}
 
-	public boolean GetTO() {
+	boolean GetTO() {
 		return !GetBit(0x03, 4);
 	}
 
-	public void SetTO(boolean to) {
+	void SetTO(boolean to) {
 		SetBit(0x03, 4, !to);
 	}
 
-	public boolean GetPD() {
+	boolean GetPD() {
 		return !GetBit(0x03, 3);
 	}
 
-	public void SetPD(boolean pd) {
+	void SetPD(boolean pd) {
 		SetBit(0x03, 3, !pd);
 	}
 
-	public boolean GetPSA() {
+	boolean GetPSA() {
 		return GetBit(0x81, 3);
 	}
 
-	public int GetPrescale() {
+	int GetPrescale() {
 		int prescale = 0x01 << (Register[0x81] & 0x07);
 
 		if (!GetPSA()) {
@@ -140,19 +132,19 @@ public class Register {
 		return prescale;
 	}
 
-	public void ClearPrescale() {
+	void ClearPrescale() {
 		DirectWrite(0x81, Register[0x81] & 0xf8);
 	}
 
-	public boolean GetClockSource() {
+	boolean GetClockSource() {
 		return GetBit(0x81, 4);
 	}
 
-	public boolean GetINTEDG() {
+	boolean GetINTEDG() {
 		return GetBit(0x81, 6);
 	}
 
-	public void IncrementTMR0() {
+	void IncrementTMR0() {
 		int oldTMR0 = GetTMR0();
 
 		DirectWrite(1, PIC.Calculate("incf", oldTMR0));
@@ -163,111 +155,83 @@ public class Register {
 		}
 	}
 
-	public int GetTMR0() {
+	int GetTMR0() {
 		return Register[1];
 	}
 
-	public void SetT0IF(boolean t0if) {
+	void SetT0IF(boolean t0if) {
 		SetBit(0x0B, 2, t0if);
 	}
 
-	public boolean GetT0IF() {
-		return GetBit(0x0B, 2);
-	}
-
-	public void SetT0IE(boolean t0ie) {
-		SetBit(0x0B, 5, t0ie);
-	}
-
-	public boolean GetT0IE() {
+	boolean GetT0IE() {
 		return (Register[0x0B] & 0x20) == 0x20;
 	}
 
-	public void SetGIE(boolean gie) {
+	void SetGIE(boolean gie) {
 		SetBit(0x0B, 7, gie);
 	}
 
-	public boolean GetGIE() {
+	boolean GetGIE() {
 		return GetBit(0x0B, 7);
 	}
 
-	public boolean GetINTE() {
+	boolean GetINTE() {
 		return GetBit(0x0B, 4);
 	}
 
-	public void SetINTF(boolean intf) {
+	void SetINTF(boolean intf) {
 		SetBit(0x0B, 1, intf);
 	}
 
-	public boolean GetINTF() {
-		return GetBit(0x0B, 1);
-	}
-
-	public boolean GetRBIE() {
+	boolean GetRBIE() {
 		return GetBit(0x0B, 3);
 	}
 
-	public void SetRBIE(boolean rbie) {
-		SetBit(0x0B, 3, rbie);
-	}
-
-	public boolean GetRBIF() {
-		return GetBit(0x0B, 0);
-	}
-
-	public void SetRBIF(boolean rbif) {
+	void SetRBIF(boolean rbif) {
 		SetBit(0x0B, 0, rbif);
 	}
 
-	public boolean GetPortA(int port) {
+	boolean GetPortA(int port) {
 		return GetBit(0x05, port);
 	}
 
-	public void SetPortA(int port, boolean set) {
+	void SetPortA(int port, boolean set) {
 		SetBit(0x05, port, set);
 	}
 
-	public boolean GetTRISA(int port) {
-		return GetBit(0x85, port);
-	}
-
-	public boolean GetPortB(int port) {
+	boolean GetPortB(int port) {
 		return GetBit(0x06, port);
 	}
 
-	public void SetPortB(int port, boolean set) {
+	void SetPortB(int port, boolean set) {
 		SetBit(0x06, port, set);
 	}
 
-	public boolean GetTRISB(int port) {
-		return GetBit(0x86, port);
-	}
-
-	public void SetRD(boolean rd) {
+	void SetRD(boolean rd) {
 		SetBit(0x88, 0, rd);
 	}
 
-	public boolean GetRD() {
+	boolean GetRD() {
 		return GetBit(0x88, 0);
 	}
 
-	public void SetWR(boolean wr) {
+	void SetWR(boolean wr) {
 		SetBit(0x88, 1, wr);
 	}
 
-	public boolean GetWR() {
+	boolean GetWR() {
 		return GetBit(0x88, 1);
 	}
 
-	public boolean GetWREN() {
+	boolean GetWREN() {
 		return GetBit(0x88, 2);
 	}
 
-	public void SetWRERR(boolean wrerr) {
+	void SetWRERR(boolean wrerr) {
 		SetBit(0x88, 3, wrerr);
 	}
 
-	public void SetEEIF(boolean eeif) {
+	void SetEEIF(boolean eeif) {
 		SetBit(0x88, 4, eeif);
 	}
 

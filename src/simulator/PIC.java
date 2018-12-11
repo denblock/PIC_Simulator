@@ -65,14 +65,6 @@ public class PIC {
 		Reset();
 	}
 
-	public void Run() {
-		int run = 0;
-
-		while (run == 0) {
-			run = Step();
-		}
-	}
-
 	public int Step() {
 		if (PC >= Ende) {
 			return -1;
@@ -222,7 +214,7 @@ public class PIC {
 		return Reg.GetPD() && !Reg.GetTO() ? 1 : 0;
 	}
 
-	public int Calculate(String instructionName, int a, int b) {
+	int Calculate(String instructionName, int a, int b) {
 		int result;
 		int[] statusAffected = new int[] { 0, 0, 0 }; // { C, DC, Z }
 
@@ -277,11 +269,11 @@ public class PIC {
 			break;
 		case "rlf":
 			result = (a << 1) | (Reg.GetC() ? 1 : 0);
-			Reg.SetC(((a & 0x80) >> 7) == 1);
+			Reg.SetC((a & 0x80) == 0x80);
 			break;
 		case "rrf":
 			result = (a >> 1) | ((Reg.GetC() ? 1 : 0) << 7);
-			Reg.SetC((a & 0x01) == 1);
+			Reg.SetC((a & 0x01) == 0x01);
 			break;
 		case "bcf":
 			result = a & ~(1 << b);
@@ -313,11 +305,11 @@ public class PIC {
 		return result;
 	}
 
-	public int Calculate(String instructionName, int a) {
+	int Calculate(String instructionName, int a) {
 		return Calculate(instructionName, a, W);
 	}
 
-	public void ClearWDT() {
+	private void ClearWDT() {
 		SetRuntime(0);
 
 		if (Reg.GetPSA()) {
@@ -415,7 +407,6 @@ public class PIC {
 
 		PC = pc;
 		Reg.DirectWrite(0x02, pc & 0xFF);
-		// DirectWrite(0x0A, (pc >> 8) & 0x1F);
 
 		if (PC_Listener != null) {
 			PC_Listener.accept(pc);

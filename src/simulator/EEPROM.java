@@ -1,15 +1,15 @@
 package simulator;
 
-public class EEPROM {
-	PIC PIC;
+class EEPROM {
+	private PIC PIC;
 	private int[] Data;
 
-	public EEPROM(PIC pic) {
+	EEPROM(PIC pic) {
 		PIC = pic;
 		Data = new int[64];
 	}
 
-	public void Write(int address, int value) {
+	void Write(int address, int value) {
 		if (Data[address] == value) {
 			return;
 		}
@@ -21,11 +21,11 @@ public class EEPROM {
 		}
 	}
 
-	public int Read(int address) {
+	int Read(int address) {
 		return Data[address];
 	}
 
-	public void Reset() {
+	void Reset() {
 		for (int i = 0; i < 64; i++) {
 			Write(i, 0);
 		}

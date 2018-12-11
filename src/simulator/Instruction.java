@@ -1,11 +1,11 @@
 package simulator;
 
-public class Instruction {
+class Instruction {
 	private String Name;
 	private int[] Args;
 	private int Cycles;
 
-	public Instruction(int instruction) {
+	Instruction(int instruction) {
 		if (instruction == 0xFFFF) {
 			return;
 		}
@@ -207,15 +207,15 @@ public class Instruction {
 		}
 	}
 
-	public String GetName() {
+	String GetName() {
 		return Name;
 	}
 
-	public int[] GetArgs() {
+	int[] GetArgs() {
 		return Args;
 	}
 
-	public int GetCycles() {
+	int GetCycles() {
 		return Cycles;
 	}
 }
