@@ -221,8 +221,8 @@ public class Main {
 		mntmParse.setEnabled(false);
 		mntmParse.addListener(SWT.Selection, (e) -> {
 			PIC.ParseLST(text.getText());
-			PC_Changed(0);
 			SetParsed(true);
+			PC_Changed(0);
 		});
 
 		new MenuItem(menu_simulator, SWT.SEPARATOR);
@@ -456,6 +456,7 @@ public class Main {
 
 		textCarry_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
 		textCarry_Content.setBounds(386, 38, 50, 35);
+		textCarry_Content.setText("0");
 
 		Text textDC = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
 		textDC.setBounds(260, 79, 120, 35);
@@ -463,6 +464,7 @@ public class Main {
 
 		textDC_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
 		textDC_Content.setBounds(386, 79, 50, 35);
+		textDC_Content.setText("0");
 
 		Text textZero = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
 		textZero.setBounds(260, 120, 120, 35);
@@ -470,6 +472,7 @@ public class Main {
 
 		textZero_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
 		textZero_Content.setBounds(386, 120, 50, 35);
+		textZero_Content.setText("0");
 
 		grp_ports = new Group(shell, SWT.NONE);
 		grp_ports.setBounds(10, (int) (rect.width * 0.4892), 902, 124);
