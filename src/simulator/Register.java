@@ -50,18 +50,18 @@ public class Register {
 	}
 
 	public void Reset() {
-		for (int i = 0; i <= 0x8B; i++) {
+		for (int i = 0x0C; i <= 0x2F; i++) {
 			DirectWrite(i, 0);
-
-			if (i == 0x2F) {
-				i = 0x80;
-			}
 		}
 
-		DirectWrite(0x03, 0x18);
-		DirectWrite(0x81, 0xff);
-		DirectWrite(0x85, 0x1f);
-		DirectWrite(0x86, 0xff);
+		DirectWrite(0x02, 0);
+		DirectWrite(0x03, Register[0x03] | 0x18);
+		DirectWrite(0x0A, 0);
+		DirectWrite(0x0B, Register[0x0B] & 0x01);
+		DirectWrite(0x81, 0xFF);
+		DirectWrite(0x85, 0x1F);
+		DirectWrite(0x86, 0xFF);
+		DirectWrite(0x88, Register[0x88] & 0x08);
 	}
 
 	private int GetAddress(int pos) {

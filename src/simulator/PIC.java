@@ -208,8 +208,9 @@ public class PIC {
 				if (Reg.GetPD() && !Reg.GetTO()) {
 					Reg.SetTO(true);
 				} else {
-					Reg.Reset();
+					Reset();
 					Reg.SetWRERR(true);
+					incrementPC = false;
 				}
 			}
 		}
