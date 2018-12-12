@@ -71,10 +71,12 @@ public class Main {
 	private Composite composite_sfr;
 	private Composite composite_gpr;
 	private Composite composite_eeprom;
-	private ScrolledComposite scrolledComposite_gpr;
 	private Group grp_gpr;
 	private Group grp_eeprom;
 	private Group grp_ports;
+
+	private static final int DPI_CURRENT = Display.getDefault().getDPI().x;
+	private static final double DPI_SCALE = (DPI_CURRENT / 96.0);
 
 	/**
 	 * Launch the application.
@@ -122,11 +124,8 @@ public class Main {
 	protected void createContents() throws IOException {
 		shell = new Shell(SWT.CLOSE | SWT.TITLE | SWT.MIN);
 		shell.setImage(new Image(shell.getDisplay(), Main.class.getClassLoader().getResourceAsStream("micro.ico")));
-		Rectangle rect = shell.getDisplay().getClientArea();
-		shell.setSize((int) (rect.width * 0.5382), (int) (rect.width * 0.369));
+		shell.setSize((int) (1067 * DPI_SCALE), (int) (730 * DPI_SCALE));
 		shell.setText("PIC Simulator - Unbenannt");
-
-		rect = shell.getClientArea();
 
 		Menu menu = new Menu(shell, SWT.BAR);
 		shell.setMenuBar(menu);
@@ -268,7 +267,7 @@ public class Main {
 		mntmAbout.setText("About");
 
 		ToolBar toolBar = new ToolBar(shell, SWT.FLAT | SWT.RIGHT);
-		toolBar.setBounds(10, 0, rect.width, 33);
+		toolBar.setBounds(10, 0, 1067, 23);
 
 		tltmRun = new ToolItem(toolBar, SWT.NONE);
 		tltmRun.addListener(SWT.Selection, (e) -> RunClick());
@@ -297,7 +296,7 @@ public class Main {
 
 		text = new StyledText(shell, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
 		text.setFont(new Font(shell.getDisplay(), new FontData("Consolas", 9, SWT.NORMAL)));
-		text.setBounds(10, 45, rect.width - 512, (int) (rect.width * 0.3769));
+		text.setBounds(10, 35, 766, 400);
 		Displayed_Lines = (text.getClientArea().height / text.getLineHeight()) - 1;
 		text.addListener(SWT.Modify, (e) -> {
 			for (int i = 0; i < text.getLineCount(); i++) {
@@ -333,11 +332,11 @@ public class Main {
 
 		Group grp_sfr = new Group(shell, SWT.NONE);
 		grp_sfr.setText("Special Function Registers");
-		grp_sfr.setBounds(rect.width - 476, 45, 452, (int) (rect.height * 0.4173));
+		grp_sfr.setBounds(790, 30, 260, 300);
 
 		ScrolledComposite scrolledComposite_sfr = new ScrolledComposite(grp_sfr,
 				SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-		scrolledComposite_sfr.setBounds(10, 40, 432, (int) (rect.height * 0.4173) - 50);
+		scrolledComposite_sfr.setBounds(10, 24, 240, 266);
 		scrolledComposite_sfr.setExpandHorizontal(true);
 		scrolledComposite_sfr.setExpandVertical(true);
 
@@ -346,12 +345,13 @@ public class Main {
 
 		grp_gpr = new Group(shell, SWT.NONE);
 		grp_gpr.setText("General Purpose Registers");
-		grp_gpr.setBounds(rect.width - 476, (int) (rect.height * 0.4173) + 51, 452, (int) (rect.height * 0.514));
+		grp_gpr.setBounds(790, 335, 260, 330);
 
-		scrolledComposite_gpr = new ScrolledComposite(grp_gpr, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+		ScrolledComposite scrolledComposite_gpr = new ScrolledComposite(grp_gpr,
+				SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
 		scrolledComposite_gpr.setExpandVertical(true);
 		scrolledComposite_gpr.setExpandHorizontal(true);
-		scrolledComposite_gpr.setBounds(10, 40, 432, (int) (rect.height * 0.514) - 50);
+		scrolledComposite_gpr.setBounds(10, 24, 240, 296);
 		scrolledComposite_gpr.setMinSize(new Point(10, 10));
 
 		composite_gpr = new Composite(scrolledComposite_gpr, SWT.NONE);
@@ -359,14 +359,14 @@ public class Main {
 
 		grp_eeprom = new Group(shell, SWT.NONE);
 		grp_eeprom.setText("EEPROM");
-		grp_eeprom.setBounds(rect.width - 476, (int) (rect.height * 0.6973) + 57, 452, (int) (rect.height * 0.23));
+		grp_eeprom.setBounds(790, 335, 260, 330);
 		grp_eeprom.setVisible(false);
 
 		ScrolledComposite scrolledComposite_eeprom = new ScrolledComposite(grp_eeprom,
 				SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
 		scrolledComposite_eeprom.setExpandVertical(true);
 		scrolledComposite_eeprom.setExpandHorizontal(true);
-		scrolledComposite_eeprom.setBounds(10, 40, 432, (int) (rect.height * 0.23) - 50);
+		scrolledComposite_eeprom.setBounds(10, 24, 240, 296);
 		scrolledComposite_eeprom.setMinSize(new Point(10, 10));
 
 		composite_eeprom = new Composite(scrolledComposite_eeprom, SWT.NONE);
@@ -376,11 +376,13 @@ public class Main {
 				"05h - PORTA", "06h - PORTB", "07h - ", "08h - EEDATA", "09h - EEADR", "0Ah - PCLATH", "0Bh - INTCON",
 				"80h - Indirect addr.", "81h - OPTION", "82h - PCL", "83h - STATUS", "84h - FSR", "85h - TRISA",
 				"86h - TRISB", "87h - ", "88h - EECON1", "89h - EECON2", "8Ah - PCLATH", "8Bh - INTCON" };
+		
+		int widthHint = (int)(80 * DPI_SCALE);
 
 		for (int i = 0; i < SFRs.length; i++) {
 			Text text_1 = new Text(composite_sfr, SWT.BORDER | SWT.READ_ONLY);
 			GridData gd_text_1 = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
-			gd_text_1.widthHint = 180;
+			gd_text_1.widthHint = widthHint;
 			text_1.setLayoutData(gd_text_1);
 			text_1.setText(SFRs[i]);
 
@@ -392,7 +394,7 @@ public class Main {
 		for (int i = 0x0C; i <= 0x2F; i++) {
 			Text text_1 = new Text(composite_gpr, SWT.BORDER | SWT.READ_ONLY);
 			GridData gd_text_1 = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
-			gd_text_1.widthHint = 180;
+			gd_text_1.widthHint = widthHint;
 			text_1.setLayoutData(gd_text_1);
 			text_1.setText(String.format("%02X", i));
 
@@ -404,7 +406,7 @@ public class Main {
 		for (int i = 0; i <= 0x3F; i++) {
 			Text text_1 = new Text(composite_eeprom, SWT.BORDER | SWT.READ_ONLY);
 			GridData gd_text_1 = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
-			gd_text_1.widthHint = 180;
+			gd_text_1.widthHint = widthHint;
 			text_1.setLayoutData(gd_text_1);
 			text_1.setText(String.format("%02X", i));
 
@@ -424,58 +426,58 @@ public class Main {
 
 		Group grpStatus = new Group(shell, SWT.NONE);
 		grpStatus.setText("Status");
-		grpStatus.setBounds(10, (int) (rect.width * 0.3769) + 58, 446, 165);
+		grpStatus.setBounds(10, 441, 314, 105);
 
 		Text textPc = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
-		textPc.setBounds(10, 38, 120, 35);
+		textPc.setBounds(10, 20, 80, 21);
 		textPc.setText("PC");
 
 		textPc_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textPc_Content.setBounds(136, 38, 106, 35);
+		textPc_Content.setBounds(96, 20, 67, 21);
 		textPc_Content.setText("00");
 
 		Text textWRegister = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
 		textWRegister.setText("W Register");
-		textWRegister.setBounds(10, 79, 120, 35);
+		textWRegister.setBounds(10, 47, 80, 21);
 
 		textW_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textW_Content.setBounds(136, 79, 106, 35);
+		textW_Content.setBounds(96, 47, 67, 21);
 		textW_Content.setText("FF");
 
 		Text textRuntime = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
 		textRuntime.setText("Runtime");
-		textRuntime.setBounds(10, 120, 120, 35);
+		textRuntime.setBounds(10, 74, 80, 21);
 
 		textRuntime_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textRuntime_Content.setBounds(136, 120, 106, 35);
+		textRuntime_Content.setBounds(96, 74, 67, 21);
 		textRuntime_Content.setText("0");
 
 		Text textCarry = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
-		textCarry.setBounds(260, 38, 120, 35);
+		textCarry.setBounds(175, 20, 80, 21);
 		textCarry.setText("Carry Flag");
 
 		textCarry_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textCarry_Content.setBounds(386, 38, 50, 35);
+		textCarry_Content.setBounds(261, 20, 43, 21);
 		textCarry_Content.setText("0");
 
 		Text textDC = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
-		textDC.setBounds(260, 79, 120, 35);
+		textDC.setBounds(175, 47, 80, 21);
 		textDC.setText("DC Flag");
 
 		textDC_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textDC_Content.setBounds(386, 79, 50, 35);
+		textDC_Content.setBounds(261, 47, 43, 21);
 		textDC_Content.setText("0");
 
 		Text textZero = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY);
-		textZero.setBounds(260, 120, 120, 35);
+		textZero.setBounds(175, 74, 80, 21);
 		textZero.setText("Zero Flag");
 
 		textZero_Content = new Text(grpStatus, SWT.BORDER | SWT.READ_ONLY | SWT.RIGHT);
-		textZero_Content.setBounds(386, 120, 50, 35);
+		textZero_Content.setBounds(261, 74, 43, 21);
 		textZero_Content.setText("0");
 
 		grp_ports = new Group(shell, SWT.NONE);
-		grp_ports.setBounds(10, (int) (rect.width * 0.4892), 902, 124);
+		grp_ports.setBounds(10, 564, 662, 91);
 		grp_ports.setText("I/O Ports");
 
 		for (int i = 0; i < 8; i++) {
@@ -483,31 +485,31 @@ public class Main {
 
 			Button btn = new Button(grp_ports, SWT.NONE);
 			btn.setText("RA" + i);
-			btn.setBounds(10 + i * 111, 38, 105, 35);
+			btn.setBounds(10 + i * 81, 25, 75, 25);
 			btn.setEnabled(false);
 			btn.addListener(SWT.Selection, (e) -> PIC.RA_Invoked(_i));
 
 			Text text_p = new Text(grp_ports, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
 			text_p.setText("RA" + i);
-			text_p.setBounds(10 + i * 111, 38, 105, 35);
+			text_p.setBounds(10 + i * 81, 25, 75, 25);
 			text_p.setEnabled(false);
 			text_p.setVisible(false);
 
 			btn = new Button(grp_ports, SWT.NONE);
 			btn.setText("RB" + i);
-			btn.setBounds(10 + i * 111, 79, 105, 35);
+			btn.setBounds(10 + i * 81, 56, 75, 25);
 			btn.setEnabled(false);
 			btn.addListener(SWT.Selection, (e) -> PIC.RB_Invoked(_i));
 
 			text_p = new Text(grp_ports, SWT.BORDER | SWT.READ_ONLY | SWT.CENTER);
 			text_p.setText("RB" + i);
-			text_p.setBounds(10 + i * 111, 79, 105, 35);
+			text_p.setBounds(10 + i * 81, 56, 75, 25);
 			text_p.setEnabled(false);
 			text_p.setVisible(false);
 		}
 
 		Button btnWde = new Button(shell, SWT.NONE);
-		btnWde.setBounds(rect.width - 607, 834, 105, 35);
+		btnWde.setBounds(694, 441, 82, 24);
 		btnWde.setText("WDE");
 		btnWde.addListener(SWT.Selection, (e) -> {
 			WDE = !WDE;
@@ -517,12 +519,13 @@ public class Main {
 		btnWde.notifyListeners(SWT.Selection, new Event());
 
 		Combo combo = new Combo(shell, SWT.READ_ONLY);
-		combo.setBounds(rect.width - 769, 834, 156, 33);
+		combo.setBounds(583, 441, 105, 23);
 		combo.setItems("4MHz Quartz", "1MHz Quartz");
 		combo.select(0);
 		combo.addListener(SWT.Selection, (e) -> PIC.SetQuartz(combo.getSelectionIndex() == 0 ? 4 : 1));
 
 		PIC.Reset();
+		ScaleComposite(shell);
 	}
 
 	private void RunClick() {
@@ -647,11 +650,8 @@ public class Main {
 	private void SetDisplayEEPROM(boolean display) {
 		Display_EEPROM = display;
 
-		int gpr_height = (int) (shell.getClientArea().height * (display ? 0.28 : 0.514));
-
-		grp_gpr.setSize(452, gpr_height);
-		scrolledComposite_gpr.setSize(432, gpr_height - 50);
 		grp_eeprom.setVisible(display);
+		grp_gpr.setVisible(!display);
 	}
 
 	private void PC_Changed(int pc) {
@@ -800,6 +800,26 @@ public class Main {
 			return str;
 		} else {
 			return String.format("%02X", val);
+		}
+	}
+
+	private void ScaleComposite(Composite composite) {
+		Control[] children = composite.getChildren();
+
+		for (int i = 0; i < children.length; i++) {
+			Control control = children[i];
+
+			if (control instanceof Composite) {
+				ScaleComposite((Composite) control);
+			}
+
+			Rectangle rect = control.getBounds();
+			double x = rect.x * DPI_SCALE;
+			double y = rect.y * DPI_SCALE;
+			double width = rect.width * DPI_SCALE;
+			double height = rect.height * DPI_SCALE;
+
+			control.setBounds((int) x, (int) y, (int) width, (int) height);
 		}
 	}
 }
