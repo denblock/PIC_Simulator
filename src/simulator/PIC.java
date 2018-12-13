@@ -15,7 +15,7 @@ public class PIC {
 	private int PC;
 	private int Ende;
 	private boolean WDE;
-	private int Quartz = 4;
+	int Quartz = 4;
 	private Consumer<Integer> PC_Listener;
 	private Consumer<Integer> W_Listener;
 	private Consumer<Integer> Runtime_Listener;
@@ -204,6 +204,15 @@ public class PIC {
 					Reg.SetWRERR(true);
 					incrementPC = false;
 				}
+			}
+		}
+
+		if (Reg.EEPROM_Time > 0) {
+			Reg.EEPROM_Time-= 4/Quartz;
+
+			if (Reg.EEPROM_Time <= 0) {
+				Reg.SetEEIF(true);
+				Reg.EEPROM_Time += 1000;
 			}
 		}
 

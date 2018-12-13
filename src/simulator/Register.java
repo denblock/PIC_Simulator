@@ -4,6 +4,7 @@ class Register {
 	private int[] Register;
 	private PIC PIC;
 	private boolean EEPROM_Write_Sequence;
+	int EEPROM_Time;
 
 	Register(PIC pic) {
 		PIC = pic;
@@ -42,7 +43,6 @@ class Register {
 				PIC.EEPROM.Write(Register[0x09], Register[0x08]);
 				SetWR(false);
 				EEPROM_Write_Sequence = false;
-				SetEEIF(true);
 			}
 		} else if (address == 0x02) {
 			PIC.SetPC(Register[0x02] | ((Register[0x0A] & 0x1F) << 8));
@@ -62,6 +62,9 @@ class Register {
 		DirectWrite(0x85, 0x1F);
 		DirectWrite(0x86, 0xFF);
 		DirectWrite(0x88, Register[0x88] & 0x08);
+		
+		EEPROM_Time = 1000;
+		EEPROM_Write_Sequence = false;
 	}
 
 	private int GetAddress(int pos) {

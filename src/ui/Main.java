@@ -114,6 +114,8 @@ public class Main {
 				display.sleep();
 			}
 		}
+		
+		System.exit(0);
 	}
 
 	/**
