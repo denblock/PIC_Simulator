@@ -10,7 +10,6 @@ class Register {
 		PIC = pic;
 
 		Register = new int[1024];
-		Reset();
 	}
 
 	int Read(int pos) {
@@ -50,10 +49,6 @@ class Register {
 	}
 
 	void Reset() {
-		for (int i = 0x0C; i <= 0x2F; i++) {
-			DirectWrite(i, 0);
-		}
-
 		DirectWrite(0x02, 0);
 		DirectWrite(0x03, Register[0x03] | 0x18);
 		DirectWrite(0x0A, 0);

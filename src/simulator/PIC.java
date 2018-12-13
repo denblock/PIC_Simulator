@@ -13,7 +13,6 @@ public class PIC {
 	private int Runtime;
 	int CyclesLeft;
 	private int PC;
-	private int Ende;
 	private boolean WDE;
 	int Quartz = 4;
 	private Consumer<Integer> PC_Listener;
@@ -27,7 +26,6 @@ public class PIC {
 	public PIC() {
 		Reg = new Register(this);
 		EEPROM = new EEPROM(this);
-		Reset();
 	}
 
 	public void Reset() {
@@ -57,8 +55,6 @@ public class PIC {
 			Integer command = Integer.parseInt(byteData[1], 16);
 
 			Memory[address] = command;
-			Ende = address;
-
 			LST_Offset[address] = i;
 		}
 
@@ -66,10 +62,6 @@ public class PIC {
 	}
 
 	public int Step() {
-		if (PC >= Ende) {
-			return -1;
-		}
-
 		Instruction instruction;
 		boolean incrementPC = true;
 

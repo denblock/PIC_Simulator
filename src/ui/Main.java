@@ -223,6 +223,7 @@ public class Main {
 		mntmParse.addListener(SWT.Selection, (e) -> {
 			PIC.ParseLST(text.getText());
 			SetParsed(true);
+			PIC.Reset();
 			PC_Changed(0);
 		});
 
@@ -554,7 +555,7 @@ public class Main {
 				shell.getDisplay().syncExec(() -> SetRunning(false));
 
 				if (Reset_Requested) {
-					shell.getDisplay().syncExec(() -> PIC.Reset());
+					PIC.Reset();
 					Reset_Requested = false;
 				}
 			}).start();
