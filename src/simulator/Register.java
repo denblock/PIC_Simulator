@@ -41,6 +41,7 @@ class Register {
 			if (GetWR() && EEPROM_Write_Sequence) {
 				PIC.EEPROM.Write(Register[0x09], Register[0x08]);
 				SetWR(false);
+				EEPROM_Time = 1000;
 				EEPROM_Write_Sequence = false;
 			}
 		} else if (address == 0x02) {
@@ -58,7 +59,7 @@ class Register {
 		DirectWrite(0x86, 0xFF);
 		DirectWrite(0x88, Register[0x88] & 0x08);
 		
-		EEPROM_Time = 1000;
+		EEPROM_Time = 0;
 		EEPROM_Write_Sequence = false;
 	}
 

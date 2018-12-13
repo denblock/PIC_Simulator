@@ -204,7 +204,7 @@ public class PIC {
 
 			if (Reg.EEPROM_Time <= 0) {
 				Reg.SetEEIF(true);
-				Reg.EEPROM_Time += 1000;
+				Reg.EEPROM_Time = 0;
 			}
 		}
 
