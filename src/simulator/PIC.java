@@ -343,7 +343,6 @@ public class PIC {
 	void Interrupt() {
 		if (Reg.GetPD() && !Reg.GetTO()) {
 			Reg.SetPD(false);
-			Step();
 		}
 
 		if (Reg.GetGIE()) {

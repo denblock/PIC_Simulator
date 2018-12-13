@@ -223,7 +223,6 @@ public class Main {
 		mntmParse.addListener(SWT.Selection, (e) -> {
 			PIC.ParseLST(text.getText());
 			SetParsed(true);
-			PIC.Reset();
 			PC_Changed(0);
 		});
 
