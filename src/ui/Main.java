@@ -114,7 +114,7 @@ public class Main {
 				display.sleep();
 			}
 		}
-		
+
 		System.exit(0);
 	}
 
@@ -267,6 +267,12 @@ public class Main {
 
 		MenuItem mntmAbout = new MenuItem(menu_4, SWT.NONE);
 		mntmAbout.setText("About");
+		mntmAbout.addListener(SWT.Selection, (e) -> {
+			MessageBox messageBox = new MessageBox(shell, SWT.ICON_INFORMATION | SWT.OK);
+			messageBox.setMessage("PIC Simulator\n\nMade by: Denis Block & Kerim Aydin");
+			messageBox.setText("PIC Simulator");
+			messageBox.open();
+		});
 
 		ToolBar toolBar = new ToolBar(shell, SWT.FLAT | SWT.RIGHT);
 		toolBar.setBounds(10, 0, 1067, 23);
@@ -307,7 +313,7 @@ public class Main {
 				}
 			}
 
-			// text.redraw();
+			text.redraw();
 
 			mntmParse.setEnabled(text.getText().length() != 0);
 			Modified = true;
@@ -378,8 +384,8 @@ public class Main {
 				"05h - PORTA", "06h - PORTB", "07h - ", "08h - EEDATA", "09h - EEADR", "0Ah - PCLATH", "0Bh - INTCON",
 				"80h - Indirect addr.", "81h - OPTION", "82h - PCL", "83h - STATUS", "84h - FSR", "85h - TRISA",
 				"86h - TRISB", "87h - ", "88h - EECON1", "89h - EECON2", "8Ah - PCLATH", "8Bh - INTCON" };
-		
-		int widthHint = (int)(80 * DPI_SCALE);
+
+		int widthHint = (int) (80 * DPI_SCALE);
 
 		for (int i = 0; i < SFRs.length; i++) {
 			Text text_1 = new Text(composite_sfr, SWT.BORDER | SWT.READ_ONLY);
